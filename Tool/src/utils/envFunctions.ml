@@ -158,25 +158,6 @@ let rec check_sevt_exists (l: Ast.SymbolicEvent.t list) (sevt: Ast.SymbolicEvent
         then true
       else check_sevt_exists ls sevt
 
-(*
-let rec check_sevt_exists (l: Ast.SymbolicEvent.t list) (sevt: Ast.SymbolicEvent.t): bool = 
-  match l with
-    | [] -> false
-    | l::ls -> 
-      match l with
-      | Ast.SymbolicEvent.SymbolicEvent(x) ->
-        (match sevt with 
-        | Ast.SymbolicEvent.SymbolicEvent(s) ->
-          if((String.compare s.label.name x.label.name == 0) && (String.compare s.payload.name x.payload.name == 0))
-          then true
-          else check_sevt_exists ls sevt
-        | Ast.SymbolicEvent.Any -> check_sevt_exists ls sevt )       
-      | Ast.SymbolicEvent.Any -> 
-        (match sevt with 
-        | Ast.SymbolicEvent.Any -> true 
-        | Ast.SymbolicEvent.SymbolicEvent(x) -> check_sevt_exists ls sevt )
-*)
-
 (*checks if s2 is a substring of s1*)
 let contains s1 s2 =
   try
@@ -192,12 +173,6 @@ let rec check_exp_exists (l: Ast.Expression.t list) (evt: Ast.Expression.t): boo
     | [] -> false
     | _ -> 
       contains (pretty_print_evt_list l) (pretty_print_evt_list [evt]) 
-
-(*let rec check_exp_exists (l: Ast.Expression.t list) (evt: Ast.Expression.t): bool = 
-  print_endline ("checking ");
-  List.map (fun m -> print_expression_string m) l;
-  print_expression_string evt;
-  List.mem evt l *)
 
 let rec check_tvar_exists (l: Ast.TVar.t list) (tvar: Ast.TVar.t): bool =
     match l with 
@@ -220,12 +195,30 @@ let rec check_tvar_exists (l: Ast.TVar.t list) (tvar: Ast.TVar.t): bool =
 let rec add_monitors_not_in_list (mon_list: Ast.Monitor.t list) (to_check: Ast.Monitor.t list): Ast.Monitor.t list =
   List.sort_uniq compare (mon_list @ to_check)
 
-(*given a string, it checks whether an identifier exp or a literal exp should be created*)
-let rec create_exp(s: string): Ast.Expression.t = 
-  match int_of_string s with 
-  | x ->  Ast.Expression.Literal(Ast.Literal.Int(x)) 
-  | exception Failure _ -> 
-    (match bool_of_string s with 
-      | x ->  Ast.Expression.Literal(Ast.Literal.Bool(x))
-      | exception Invalid_argument _ -> create_exp_identifier s
-    )
+(*create a list of n consecutive numbers*)
+let rec create_list (n:int): int list =
+  match n with 
+    | 0 -> []
+    | some_n -> some_n :: (create_list (n-1))  
+
+(*predicate function that takes an Ast Expressions and returns a boolean value*)
+(*if e is a binary expression with an Equal operator, return true, else return false*)
+let check_comparison (e: Ast.Expression.t): bool = 
+  match e with
+  | Ast.Expression.BinaryExp(x) ->
+    (match x.arg_lt, x.operator, x.arg_rt with
+    | Ast.Expression.Identifier(x), Compare, Ast.Expression.Identifier(y) -> true
+    | Ast.Expression.Literal(x), Compare, Ast.Expression.Identifier(y) -> true
+    | Ast.Expression.Identifier(x), Compare, Ast.Expression.Literal(y) -> true
+    | Ast.Expression.Literal(x), Compare, Ast.Expression.Literal(y) -> true
+    | _ -> false)
+  | _ -> false
+
+(*takes a lists of lists and a list of expressions*)
+(*adds each list in to_add to condition_list*)
+(*ex. combine [[a,b],[c,d]] [x,y,z] -> [[a,b,x,y,z], [c,d,x,y,z]] *)
+let rec combine (to_add: Ast.Expression.t list list) (condition_list: Ast.Expression.t list): Ast.Expression.t list list =
+    match to_add with 
+    | [] -> [condition_list]
+    | x::[] -> [condition_list @ x]
+    | x::xs -> [condition_list @ x] @ (combine xs condition_list)

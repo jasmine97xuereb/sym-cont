@@ -113,90 +113,74 @@ let rec combnk k lst =
             inner new_result k xs
     in inner [] k lst  
 
-  (** [Satisfiably Combinations] returns a list of combinations, even if they are not satisfiable*)     
-  (* let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.Expression.t list list): Ast.Expression.t list =
-    (*create a list of consecutive numbers from 1 to n*)
-    let rec create_list (n:int): int list =
-      match n with 
-        | 0 -> []
-        | some_n -> some_n :: (create_list (n-1))  
-      in let num_list = create_list ((List.length cs)-1) in
-      List.map (fun z -> print_int(z);print_string(" ")) num_list;
-
-        let rec combinations n =
-          print_endline ("K is " ^string_of_int(n));
-          match n with
-            | 0 -> [[]]
-            | n -> (combnk n num_list) @ combinations (n - 1)
-          
-            in 
-            print_endline("going to one comb");
-            let rec create_one_combination (cs: Ast.Expression.t list) (indices: int list) (counter: int) (result: Ast.Expression.t list): Ast.Expression.t list = 
-              match cs with
-                | [] -> result
-                | x::xs -> 
-                  if element_exists_in_list indices counter
-                    then (create_one_combination xs indices (counter + 1)) (result @ [add_unary_condition x]) 
-                  else (create_one_combination xs indices (counter + 1)) (result @ [x])  
-                
-                in let rec filter_sat (condition_list: Ast.Expression.t list) = 
-                  let sat_result = sat condition_list
-                  in if (fst sat_result) 
-                  then snd sat_result
-                  else []
-
-                in 
-                  let rec create_all_combinations (indices_list: int list list): Ast.Expression.t list = 
-                    match indices_list with
-                    | [[]] -> filter_sat (b @ cs) (*then none of the conditions are negated*)
-                    | i::is -> (filter_sat (b @ (create_one_combination cs i 1 []))) @ (create_all_combinations is)
-                  in create_all_combinations (combinations ((List.length cs)-1)) *)
-
+(* [Satisfiably Combinations] returns a list of satisfiable combinations  *)   
+(* This function is optimised by partitioning the set of conditions in cs into two *)
+(* The first partition contains all binary expressions whose operator is an '=' *)
+(* The second partition contains all other expression not of the previous form *)
+(* All the expressions in the first partition are mutually exclusive. *)
+(* For this reason, only 'n choose n' and 'n choose n-1' are computed because either only one term can be true or none *)
+(* For the second partition, all the possible combinations are generated as usual *)
+(* The combinations of 'n choose n' @ 'n choose n-1' and those of second partition are computed *)
+(* The satisfiability is computed for every list of combinations for each k (where k ranges from 0 to n where n is the length of the second patition) *)
+(* A list of simplified satisfiable combinations is returned *)
 let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.Expression.t list list): Ast.Expression.t list =
-  (*create a list of consecutive numbers*)
-  let rec create_list (n:int): int list =
-    match n with 
-      | 0 -> []
-      | some_n -> some_n :: (create_list (n-1))  
-    in let num_list = create_list ((List.length cs)) 
+  let partition = List.partition check_comparison cs 
+    in let num_list = create_list (List.length (snd partition))
+    in let rec filter_sat (condition_list: Ast.Expression.t list list): Ast.Expression.t list = 
+      match condition_list with 
+      | [] -> []
+      | c::cs ->
+        let sat_result = sat c
+        in if (fst sat_result) 
+           then (snd sat_result) @ (filter_sat cs)
+           else filter_sat cs
+    
+    (* in let rec check_all (ll: Ast.Expression.t list) =
+      match ll with 
+      | [] -> []
+      | x::xs -> 
+        let satis = sat [x] in 
+        if (fst satis) 
+        then (snd satis) @ check_all xs
+        else (print_endline("NOT SAT!!"); check_all xs) *)
 
-    in let rec filter_sat (condition_list: Ast.Expression.t list) = 
-      let sat_result = sat condition_list
-      in if (fst sat_result) 
-      then snd sat_result
+    (* in let snd_partition = check_all (snd partition) *)
+    (* in print_endline("now they are "^ pretty_print_evt_list snd_partition);  *)
+    
+    in let rec create_one_combination (cs: Ast.Expression.t list) (indices: int list) (counter: int) (result: Ast.Expression.t list): Ast.Expression.t list = 
+      match cs with
+      | [] -> result
+      | x::xs -> 
+        if element_exists_in_list indices counter
+        then (create_one_combination xs indices (counter + 1)) (result @ [add_unary_condition x]) 
+        else (create_one_combination xs indices (counter + 1)) (result @ [x])  
+
+    in let rec create_all_combinations (indices_list: int list list) (cs: Ast.Expression.t list) (to_add: Ast.Expression.t list list): Ast.Expression.t list = 
+      match indices_list with
+      | [] -> filter_sat (combine (combine to_add cs) b) (*then none of the conditions are negated*)
+      | i::[] -> filter_sat (combine (combine to_add (create_one_combination cs i 1 []) ) b) 
+      | i::is -> 
+        let comb = filter_sat (combine (combine to_add (create_one_combination cs i 1 []) ) b) 
+        in (
+          match comb with 
+          | [] -> (create_all_combinations is cs to_add)
+          | _ -> comb  @ (create_all_combinations is cs to_add))
+    
+    (*for first element of partition i.e. when there is equality*)
+    in let n_c_n_minus_1 = List.map (fun x -> [x]) (fst partition)  (*negate all but for one *)
+    in let n_c_n = 
+      if (List.length (fst partition)) > 0 
+      then List.map (fun x -> create_one_combination cs x 1 []) [create_list (List.length (fst partition))] (*negate all*)
       else []
+    in let equal_combinations = n_c_n @ n_c_n_minus_1
 
-      in let rec create_one_combination (cs: Ast.Expression.t list) (indices: int list) (counter: int) (result: Ast.Expression.t list): Ast.Expression.t list = 
-        match cs with
-        | [] -> result
-        | x::xs -> 
-          if element_exists_in_list indices counter
-            then (create_one_combination xs indices (counter + 1)) (result @ [add_unary_condition x]) 
-          else (create_one_combination xs indices (counter + 1)) (result @ [x])  
-      
-      in let rec create_all_combinations (indices_list: int list list): Ast.Expression.t list = 
-        match indices_list with
-        | [] -> filter_sat (b @ cs) (*then none of the conditions are negated*)
-        | i::is -> 
-          let combination = filter_sat (b @ (create_one_combination cs i 1 [])) 
-          in (
-            match combination with 
-            | [] -> (create_all_combinations is)
-            | _ -> combination  @ (create_all_combinations is)
-          )
-          
-        (* | i::is -> (filter_sat (b @ (create_one_combination cs i 1 []))) @ (create_all_combinations is) *)
+    in let rec combinations (n:int) (to_add: Ast.Expression.t list list) = 
+      match n with
+      | 0 -> filter_sat (combine (combine to_add b) (snd partition)) (*in "n choose 0" none of the conditions are negated*)
+      | n -> (create_all_combinations (combnk n num_list) (snd partition) to_add) @ (combinations (n-1) to_add)
 
-      in let rec combinations n = 
-        match n with 
-        | 0 -> filter_sat (b @ cs) (*in "n choose 0" none of the conditions are negated*)
-        | n ->  (create_all_combinations (combnk n num_list)) @ (combinations (n-1))
-      
-        in combinations (List.length cs)
-
-        (* in create_all_combinations (combnk 9 num_list); b *)
-
-                  
+    in combinations (List.length (snd partition)) equal_combinations 
+   
 
 (* A constrained monitor-set <b,M> symbolically potentially reaches a verdict spr(<b,M>,w) if the monitor set M can immediately reach a verdict without requiring tau transitions *)
 let rec spr (cms: Ast.Expression.t list * Ast.Monitor.t list) (verdict_list: int list): bool =
