@@ -96,6 +96,7 @@ let rec rc (ms: Ast.Monitor.t list) (sevt: Ast.SymbolicEvent.t) (cs: Ast.Express
     | mon::mons -> ((inner_rc mon sevt cs) @ (rc mons sevt cs))
 
 let rec combnk k lst =
+  print_endline("choose "^string_of_int(k));
   let rec inner result k lst =
     match k with
     | 0 -> [[]]
@@ -108,112 +109,94 @@ let rec combnk k lst =
           | x :: xs -> innermost ((f x) :: result) f xs
         in
           let new_result = innermost result (fun z -> x :: z) (inner [] (k - 1) xs)
-          in inner new_result k xs
-    in inner [] k lst     
+          in
+            inner new_result k xs
+    in inner [] k lst  
 
+  (** [Satisfiably Combinations] returns a list of combinations, even if they are not satisfiable*)     
+  (* let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.Expression.t list list): Ast.Expression.t list =
+    (*create a list of consecutive numbers from 1 to n*)
+    let rec create_list (n:int): int list =
+      match n with 
+        | 0 -> []
+        | some_n -> some_n :: (create_list (n-1))  
+      in let num_list = create_list ((List.length cs)-1) in
+      List.map (fun z -> print_int(z);print_string(" ")) num_list;
 
-(*
+        let rec combinations n =
+          print_endline ("K is " ^string_of_int(n));
+          match n with
+            | 0 -> [[]]
+            | n -> (combnk n num_list) @ combinations (n - 1)
+          
+            in 
+            print_endline("going to one comb");
+            let rec create_one_combination (cs: Ast.Expression.t list) (indices: int list) (counter: int) (result: Ast.Expression.t list): Ast.Expression.t list = 
+              match cs with
+                | [] -> result
+                | x::xs -> 
+                  if element_exists_in_list indices counter
+                    then (create_one_combination xs indices (counter + 1)) (result @ [add_unary_condition x]) 
+                  else (create_one_combination xs indices (counter + 1)) (result @ [x])  
+                
+                in let rec filter_sat (condition_list: Ast.Expression.t list) = 
+                  let sat_result = sat condition_list
+                  in if (fst sat_result) 
+                  then snd sat_result
+                  else []
+
+                in 
+                  let rec create_all_combinations (indices_list: int list list): Ast.Expression.t list = 
+                    match indices_list with
+                    | [[]] -> filter_sat (b @ cs) (*then none of the conditions are negated*)
+                    | i::is -> (filter_sat (b @ (create_one_combination cs i 1 []))) @ (create_all_combinations is)
+                  in create_all_combinations (combinations ((List.length cs)-1)) *)
+
 let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.Expression.t list list): Ast.Expression.t list =
   (*create a list of consecutive numbers*)
   let rec create_list (n:int): int list =
     match n with 
       | 0 -> []
       | some_n -> some_n :: (create_list (n-1))  
-    in let num_list = create_list (List.length cs) in
+    in let num_list = create_list ((List.length cs)) 
 
-      let rec combinations n =
-        match n with
-         | 0 -> [[]]
-         | n -> (combnk n num_list) @ combinations (n - 1)
+    in let rec filter_sat (condition_list: Ast.Expression.t list) = 
+      let sat_result = sat condition_list
+      in if (fst sat_result) 
+      then snd sat_result
+      else []
+
+      in let rec create_one_combination (cs: Ast.Expression.t list) (indices: int list) (counter: int) (result: Ast.Expression.t list): Ast.Expression.t list = 
+        match cs with
+        | [] -> result
+        | x::xs -> 
+          if element_exists_in_list indices counter
+            then (create_one_combination xs indices (counter + 1)) (result @ [add_unary_condition x]) 
+          else (create_one_combination xs indices (counter + 1)) (result @ [x])  
       
-      in let op = Ast.Expression.BinaryExp.And in
-          let rec create_one_combination (cs: Ast.Expression.t list) (indices: int list) (counter: int): Ast.Expression.t = 
-            match cs with
-              | x::[] -> 
-                if element_exists_in_list indices counter
-                  then add_unary_condition x 
-                else x  
-              | x::xs -> 
-                if element_exists_in_list indices counter
-                  then add_binary_condition (add_unary_condition x) (create_one_combination xs indices (counter + 1)) op
-                else add_binary_condition x (create_one_combination xs indices (counter + 1)) op 
-         
-              in let sc_list = 
-                (let rec create_all_combinations (indices_list: int list list): Ast.Expression.t list = 
-                  match indices_list with
-                   | [[]] -> (*then none of the conditions are negated*)
-                    (let rec all_true (cs: Ast.Expression.t list): Ast.Expression.t = match cs with 
-                      |[] -> Ast.Expression.Literal(Bool(true))
-                      |x::[] -> x
-                      |x::xs -> add_binary_condition x (all_true xs) (Ast.Expression.BinaryExp.And)
-                    in [(all_true cs)];
-                    ) 
-                  | i::is -> [(create_one_combination cs i 1)] @ (create_all_combinations is)
-                in create_all_combinations (combinations (List.length cs)); )
+      in let rec create_all_combinations (indices_list: int list list): Ast.Expression.t list = 
+        match indices_list with
+        | [] -> filter_sat (b @ cs) (*then none of the conditions are negated*)
+        | i::is -> 
+          let combination = filter_sat (b @ (create_one_combination cs i 1 [])) 
+          in (
+            match combination with 
+            | [] -> (create_all_combinations is)
+            | _ -> combination  @ (create_all_combinations is)
+          )
+          
+        (* | i::is -> (filter_sat (b @ (create_one_combination cs i 1 []))) @ (create_all_combinations is) *)
 
-                in match b with
-                | [] -> sc_list
-                | b::[] -> 
-                  (let rec add_b sc_list: Ast.Expression.t list = 
-                    match sc_list with 
-                      | [] -> [] 
-                      | y::ys -> 
-                        let new_cond = [add_binary_condition b y op] in new_cond @ (add_b ys)
-                    in add_b sc_list)
-*)
-
-(* * [Satisfiably Combinations] returns a list of combinations, even if they are not satisfiable      *)
-let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.Expression.t list list): Ast.Expression.t list =
-  (*create a list of consecutive numbers*)
-  let rec create_list (n:int): int list =
-    match n with 
-      | 0 -> []
-      | some_n -> some_n :: (create_list (n-1))  
-    in let num_list = create_list (List.length cs) in
-
-      let rec combinations n =
-        match n with
-         | 0 -> [[]]
-         | n -> (combnk n num_list) @ combinations (n - 1)
+      in let rec combinations n = 
+        match n with 
+        | 0 -> filter_sat (b @ cs) (*in "n choose 0" none of the conditions are negated*)
+        | n ->  (create_all_combinations (combnk n num_list)) @ (combinations (n-1))
       
-      in let op = Ast.Expression.BinaryExp.And in
-          let rec create_one_combination (cs: Ast.Expression.t list) (indices: int list) (counter: int): Ast.Expression.t = 
-            match cs with
-              | [] -> Ast.Expression.Literal(Bool(true))
-              | x::[] -> 
-                if element_exists_in_list indices counter
-                  then add_unary_condition x 
-                else x  
-              | x::xs -> 
-                if element_exists_in_list indices counter
-                  then add_binary_condition (add_unary_condition x) (create_one_combination xs indices (counter + 1)) op
-                else add_binary_condition x (create_one_combination xs indices (counter + 1)) op 
-         
-              in let sc_list = 
-                (let rec create_all_combinations (indices_list: int list list): Ast.Expression.t list = 
-                  match indices_list with
-                  | [[]] -> (*none of the conditions are negated*)
-                     let comb = [create_one_combination cs [] 1]    
-                     in if sat comb 
-                     then comb 
-                     else []
-                  | i::is -> 
-                      let comb = [(create_one_combination cs i 1)] 
-                      in if sat comb 
-                      then comb @ (create_all_combinations is)
-                      else (create_all_combinations is)
-                in create_all_combinations (combinations (List.length cs)); )
+        in combinations (List.length cs)
 
-                in match b with
-                | [] -> sc_list
-                | b::[] -> 
-                  (let rec add_b sc_list: Ast.Expression.t list = 
-                    match sc_list with 
-                      | [] -> [] 
-                      | y::ys -> 
-                        let new_cond = [add_binary_condition b y op] in new_cond @ (add_b ys)
-                    in add_b sc_list)
-             
+        (* in create_all_combinations (combnk 9 num_list); b *)
+
+                  
 
 (* A constrained monitor-set <b,M> symbolically potentially reaches a verdict spr(<b,M>,w) if the monitor set M can immediately reach a verdict without requiring tau transitions *)
 let rec spr (cms: Ast.Expression.t list * Ast.Monitor.t list) (verdict_list: int list): bool =
@@ -250,18 +233,21 @@ let rec spr (cms: Ast.Expression.t list * Ast.Monitor.t list) (verdict_list: int
         else spr (fst cms, elts) (verdict_list @ [0])
     ) 
 
+(*return a tuple made up of a boolean value and the simplified boolean condition *)
+(*the second element of the tuple is always [] whenver spa is false *)
 let rec spa (cms: Ast.Expression.t list * Ast.Monitor.t list) (evt: Ast.SymbolicEvent.t) (c: Ast.Expression.t) (spa_list: int list): bool =
   (*let satisfiable = match fst cms with
     | [] -> (sat [c])
     | b::bs -> (sat [add_binary_condition b c (Ast.Expression.BinaryExp.And)])  *)
-  (* let satisfiable = sat [c] in 
-  if satisfiable == false (*if not sat(b^c) return false immediately*) 
-  then false
+  (*let satisfiable = sat [c] in 
+  if fst satisfiable == false (*if not sat(b^c) return false immediately*) 
+  then (false, [])
   else ( *)
     let rec check_all_conds (mon_list:Ast.Monitor.t list) = 
       match mon_list with
-      | [] -> false 
+      | [] -> false
       | m1::m2 ->  
+        (*use simplified boolean condition returned by sat*)
         match sym_reduce m1 (fst cms) evt c  with 
           | REDUCED(x)::_ -> true (*if one monitor reduces it is enough*)
           | ERROR(x)::xs -> 
@@ -373,13 +359,13 @@ let isSymControllable (mon: Ast.Monitor.t list) =
                 |[] ->             
                   if (Queue.is_empty unseen_cms)
                   then( 
-					          print_basic ("---------------------\nThe Witness Relation is " ^ pretty_print_relation relation);
+					          print_basic ("---------------------\nThe Witness Relation is \n" ^ pretty_print_relation relation);
                     true)
                   else 
                     (let next_m = get_next_unseen relation in 
                       match next_m with 
                       | ([],[]) -> (
-                        print_basic ("---------------------\nThe Witness Relation is " ^ pretty_print_relation relation);
+                        print_basic ("---------------------\nThe Witness Relation is \n" ^ pretty_print_relation relation);
 						            true)
                       | _-> computeSymRelation next_m relation
                     )

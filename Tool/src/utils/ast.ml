@@ -140,6 +140,18 @@ and SymbolicEvent : sig
   }
 end = SymbolicEvent
 
+(*and SymbolicEvent : sig
+  module SymbolicEvent : sig
+    type t = {
+      label: Identifier.t;
+      payload: Identifier.t;
+    } 
+  end
+  type t = 
+    | SymbolicEvent of SymbolicEvent.t
+    | Any
+end = SymbolicEvent *)
+
 and Trace : sig
   module SingleTrace : sig
     type t = {

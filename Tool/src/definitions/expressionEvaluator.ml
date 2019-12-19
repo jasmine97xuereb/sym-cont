@@ -2,8 +2,6 @@ open EnvResources
 open EnvFunctions
 open PrettyPrint
 
-(*let counter_rename = ref 0*) (*counter used to generate the fresh vars to rename bound vars*)
-
 (*function to compute values for expressions which can be found within a monitor description*)
 let rec reduce_expression (exp: Ast.Expression.t): expression_type =
   match exp with
@@ -120,7 +118,6 @@ let rec substitute_tvar (mon: Ast.Monitor.t) (monvar: Ast.TVar.t) (new_tvar: Ast
   | Ast.Monitor.TVar(x) -> 
     create_tvar new_tvar.tvar
   | Ast.Monitor.Recurse(x) ->  
-    print_endline("need to sub a rec mon");
     (*stop in case of tvariable shadowing*)
     if x.monvar.tvar == new_tvar.tvar
     then create_recurse_mon x.monvar x.consume
@@ -157,34 +154,7 @@ let rec inner_sub_eval (mon: Ast.Monitor.t) (y) (to_sub): Ast.Monitor.t =
       (*in the case where m = let x=2 in let x=x+3 in ... the x of let x=x+3 is bound to the outer let *)
       if compare_values (reduce_expression x.var) (reduce_expression y) 
       then create_evaluate_mon x.var (substitute_expression x.subst y to_sub) x.stmt
-      else create_evaluate_mon x.var (substitute_expression x.subst y to_sub) (inner_sub_eval x.stmt y to_sub)  
-
-(*let rec inner_sub_rec (mon: Ast.Monitor.t) (y: Ast.TVar.t) (to_sub: Ast.Monitor.t) = 
-  match mon with 
-  | Ast.Monitor.TVar(x) ->
-    if String.compare x.tvar y.tvar == 0
-    then 
-      (*substitute with the recursion monitor in the mapping*)
-      (match TVars.find_opt y.tvar !mapTVar with
-      | Some m -> m
-      | None -> mon)
-    else mon
-  | Ast.Monitor.QuantifiedGuard(x) -> 
-    create_quant_guard_mon x.label x.payload (inner_sub_rec x.consume y to_sub)
-  | Ast.Monitor.ExpressionGuard(x) -> 
-    create_exp_guard_mon x.label x.payload (inner_sub_rec x.consume y to_sub)
-  | Ast.Monitor.Choice(x) ->
-    create_choice_mon (inner_sub_rec x.left y to_sub) (inner_sub_rec x.right y to_sub)
-  | Ast.Monitor.Conditional(x) -> 
-    create_conditional_mon x.condition (inner_sub_rec x.if_true y to_sub) (inner_sub_rec x.if_false y to_sub)
-  | Ast.Monitor.Evaluate(x) ->  
-    create_evaluate_mon x.var x.subst (inner_sub_rec x.stmt y to_sub)
-  | Ast.Monitor.Recurse(x) ->
-    if String.compare x.monvar.tvar y.tvar == 0
-    then mon
-    else create_recurse_mon x.monvar (inner_sub_rec x.consume y to_sub)
-  | _ -> mon
-  *)
+      else create_evaluate_mon x.var (substitute_expression x.subst y to_sub) (inner_sub_eval x.stmt y to_sub)    
 
   let rec inner_sub_rec (mon: Ast.Monitor.t) (y: Ast.TVar.t) (to_sub: Ast.Monitor.t) = 
     match mon with 
@@ -207,30 +177,11 @@ let rec inner_sub_eval (mon: Ast.Monitor.t) (y) (to_sub): Ast.Monitor.t =
     | Ast.Monitor.Evaluate(x) ->  
       create_evaluate_mon x.var x.subst (inner_sub_rec x.stmt y to_sub)
     | Ast.Monitor.Recurse(x) ->
-      print_endline("rec mon was found");
-      (*if tvar is already in the list, then it must be renamed since that tvar is already bound*)
-(*      (match TVars.find_opt x.monvar.tvar !mapTVar with
-      | None -> 
-        mapTVar := TVars.add x.monvar.tvar x.consume !mapTVar;
-        x.consume
-        (*unfold the rec monitor before checking for other rec monitors*)
-      (*| Some n -> print_endline("must rename")); *)
-      | Some n -> 
-        print_endline ("renaming because this monitor is already bound"); 
-        let new_tvar = fresh_tvar in 
-        let new_mon = substitute_tvar x.consume x.monvar new_tvar in 
-        mapTVar := TVars.add new_tvar.tvar new_mon !mapTVar;
-        new_mon)
-*)
       (match TVars.find_opt x.monvar.tvar !mapTVar with
       | None -> 
         mapTVar := TVars.add x.monvar.tvar x.consume !mapTVar; 
       | Some n -> print_endline("must rename"));    
         x.consume
-
-      (*if String.compare x.monvar.tvar y.tvar == 0
-      then mon
-      else create_recurse_mon x.monvar (inner_sub_rec x.consume y to_sub)*) 
     | _ -> mon
 
 (*checks if an expression is in a list of identifiers*)

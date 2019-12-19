@@ -55,7 +55,7 @@ and rule_sgre (mon_in: Ast.Monitor.t) (b: Ast.Expression.t list) (tr_in: Ast.Sym
     (if (compare_values (reduce_identifier x.label) (reduce_identifier tr_in.label))
     then
       let new_cond = (add_binary_condition x.payload (create_exp_identifier tr_in.payload.name) Ast.Expression.BinaryExp.Compare) in
-      (if sat [add_binary_condition c new_cond Ast.Expression.BinaryExp.And]
+      (if (fst (sat [add_binary_condition c new_cond Ast.Expression.BinaryExp.And]))
         then [REDUCED(x.consume)]
       else [ERROR("Payload does not match")])
     else [ERROR("Label does not match\n")])
@@ -68,7 +68,7 @@ and rule_sgrq (mon_in: Ast.Monitor.t) (b: Ast.Expression.t list) (tr_in: Ast.Sym
     (if (compare_values (reduce_identifier x.label ) (reduce_identifier tr_in.label ))
     then
       let new_cond = (add_binary_condition x.payload x.payload Ast.Expression.BinaryExp.Compare) in
-      (if sat [add_binary_condition c new_cond Ast.Expression.BinaryExp.And]
+      (if (fst (sat [add_binary_condition c new_cond Ast.Expression.BinaryExp.And]))
         then (*substitute all occurences of x.payload by the symbolic event's payload*)
           let to_consume = inner_sub_eval x.consume x.payload (Ast.Expression.Identifier(tr_in.payload)) 
           in [REDUCED(to_consume)]
@@ -81,9 +81,9 @@ and rule_sif (mon_in: Ast.Monitor.t) (b: Ast.Expression.t list) (tr_in: Ast.Symb
     | Ast.Monitor.Conditional(x) -> (
         let c_true = add_binary_condition c x.condition Ast.Expression.BinaryExp.And in 
         let c_false = add_binary_condition c (add_unary_condition x.condition) Ast.Expression.BinaryExp.And in 
-        if (sat [c_true])
+        if (fst (sat [c_true]))
         then sym_reduce x.if_true b tr_in c_true
-        else if (sat [c_false])
+        else if (fst (sat [c_false]))
         then sym_reduce x.if_false b tr_in c_false 
         else [ERROR("unable to reduce")]      
       )

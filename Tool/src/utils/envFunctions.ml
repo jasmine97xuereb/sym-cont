@@ -219,3 +219,13 @@ let rec check_tvar_exists (l: Ast.TVar.t list) (tvar: Ast.TVar.t): bool =
 (*adds unique elements only to new_list and concatenates it with existing list mon_list*)
 let rec add_monitors_not_in_list (mon_list: Ast.Monitor.t list) (to_check: Ast.Monitor.t list): Ast.Monitor.t list =
   List.sort_uniq compare (mon_list @ to_check)
+
+(*given a string, it checks whether an identifier exp or a literal exp should be created*)
+let rec create_exp(s: string): Ast.Expression.t = 
+  match int_of_string s with 
+  | x ->  Ast.Expression.Literal(Ast.Literal.Int(x)) 
+  | exception Failure _ -> 
+    (match bool_of_string s with 
+      | x ->  Ast.Expression.Literal(Ast.Literal.Bool(x))
+      | exception Invalid_argument _ -> create_exp_identifier s
+    )

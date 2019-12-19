@@ -17,7 +17,6 @@ rule token = parse
   |'-'                            {MINUS}
   |'*'                            {MULT}
   |'/'                            {DIV}
-  | "mod"                         {MOD}
   |'<'                            {OP_ANGLE}
   |'>'                            {CLS_ANGLE}
   |"<="                           {LEQ}
@@ -27,6 +26,7 @@ rule token = parse
   |'&'                            {AND}
   |'|'                            {OR}
   |'!'                            {NOT}
+  |"mod"                          {MOD}
   |"true"                         {TRUE}
   |"false"                        {FALSE}
   |"if"                           {IF}
