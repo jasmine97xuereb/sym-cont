@@ -49,10 +49,12 @@ let rec exp_list_to_z3 (c: Ast.Expression.t list) (a: Z3.Expr.expr list) (ctx: c
 (*function to convert a list of goals into a list of expressions of the form Ast.Expression.t*)
 let rec goals_to_exp (goals: Z3.Goal.goal list): Ast.Expression.t = 
   let rec z3_to_exp (exp: Expr.expr list): Ast.Expression.t =
-    let rec single_z3_to_exp (e: Expr.expr): Ast.Expression.t =  
+    let rec single_z3_to_exp (e: Expr.expr): Ast.Expression.t = 
+      (* print_endline(Expr.to_string e);  *)
       if is_true e then Ast.Expression.Literal(Bool(true))
       else if is_false e then Ast.Expression.Literal(Bool(true))
       else if is_const e then create_exp_identifier (Expr.to_string e)
+      
       else if is_numeral e then ( (*when the resulting int is negative, the string returned is of the form (- x) -> string must be modified*)
         let new_s = Str.global_replace (Str.regexp "[\r\n\t() ]") "" (Expr.to_string e)
         in Ast.Expression.Literal(Int(int_of_string new_s)) 
@@ -70,8 +72,8 @@ let rec goals_to_exp (goals: Z3.Goal.goal list): Ast.Expression.t =
         if is_add e then add_binary_condition lt rt Ast.Expression.BinaryExp.Plus
         else if is_sub e then add_binary_condition lt rt Ast.Expression.BinaryExp.Minus
         else if is_mul e then add_binary_condition lt rt Ast.Expression.BinaryExp.Mult
-        else if is_div e then add_binary_condition lt rt Ast.Expression.BinaryExp.Div
         else if is_idiv e then add_binary_condition lt rt Ast.Expression.BinaryExp.Div
+        else if is_div e then add_binary_condition lt rt Ast.Expression.BinaryExp.Div
         else if is_and e then add_binary_condition lt rt Ast.Expression.BinaryExp.And
         else if is_le e then add_binary_condition lt rt Ast.Expression.BinaryExp.Leq
         else if is_lt e then add_binary_condition lt rt Ast.Expression.BinaryExp.Lt
@@ -98,40 +100,31 @@ let rec goals_to_exp (goals: Z3.Goal.goal list): Ast.Expression.t =
 (*otherwise get the list of subgoals and convert them back to AST expressions*)
 (*return (true, [Ast.Expression])*)            
 let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
-  (* print_all_messages ("\nChecking SAT for " ^ (pretty_print_evt_list c)); *)
-  (* let p (x: Ast.Expression.t) (identifier: string): bool=
-    (Str.string_match (Str.regexp "[0-9]+==$[a-z0-9]+") (print_evt x) 0)
-  in
-  if List.length (List.filter p c) > 1 
-  then (false, [])
-  else *)
-
+  (* m ("\nChecking SAT for " ^ (pretty_print_evt_list c)); *)
   let cfg = [("model", "true")] in 
     let ctx = (mk_context cfg) in
       let cndts = exp_list_to_z3 c [] ctx in
         
         let g = (mk_goal ctx true false false) in
         (Goal.add g [ cndts ]) ;
-        (*print_endline("-------------------");
+        (* print_endline("-------------------");
         print_endline(Goal.to_string g) ;
-        print_endline("-------------------");*)
+        print_endline("-------------------"); *)
 
         (
           let result = (Tactic.apply (and_then ctx (mk_tactic ctx ("ctx-solver-simplify")) (mk_tactic ctx "propagate-ineqs") []) g None) in
-            (if is_decided_unsat (get_subgoal result 0) 
+          (* let result = (Tactic.apply (mk_tactic ctx ("ctx-solver-simplify")) g None) in *)
+          (if is_decided_unsat (get_subgoal result 0) 
             then(
-              (*print_endline("unsat");*)
               (false, [])
             )
             else( 
-              (* print_endline("sat");
-              print_endline("subgoals are: ");
+              (* print_endline("subgoals are: "); 
               List.iter (fun x -> print_endline(Goal.to_string x)) (get_subgoals result);  *)
+
               let subgoals = get_subgoals result
               in let resulting_exp = [goals_to_exp subgoals] 
-              (* in print_endline(pretty_print_evt_list [goals_to_exp subgoals]);
-              print_endline("RESULTING:");
-              print_endline (pretty_print_evt_list resulting_exp); *)
+              (* in print_endline("resulting exp is "^ pretty_print_evt_list resulting_exp); *)
               in (true, resulting_exp)
             ));
         )
