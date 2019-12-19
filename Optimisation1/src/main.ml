@@ -36,6 +36,7 @@ let time_it action arg =
       (finish_time -. start_time)
          
 let main =
+  print_endline("test");
   let mon_list = [Sys.argv.(1)^"\n"] in
     (*get the visibility level from the command line
     if it has not been enetered, then leave it to 0*)
