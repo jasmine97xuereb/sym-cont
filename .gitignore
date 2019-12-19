@@ -69,3 +69,4 @@ doc/
 
 #ocaml generated file 
 .ipynb_checkpoints/
+*.native
