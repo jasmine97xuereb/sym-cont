@@ -14,6 +14,9 @@ open Z3.Tactic.ApplyResult
 open PrettyPrint
 open VisibilityLevel
 
+(*mutable data structure to store the cumulative time for sat calls*)
+let sat_timer = ref 0.0 
+
 (** function to convert a list of expressions in the form Ast.Expression.t into the Z3.Expr.expr required by the Z3 library  *)
 let rec exp_list_to_z3 (c: Ast.Expression.t list) (a: Z3.Expr.expr list) (ctx: context) =
   let rec single_exp_to_z3 (e: Ast.Expression.t) (ctx: context) =
@@ -105,6 +108,8 @@ let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
   if List.length (List.filter p c) > 1 
   then (false, [])
   else *)
+  
+  let start_time = Sys.time () in
 
   let cfg = [("model", "true")] in 
     let ctx = (mk_context cfg) in
@@ -121,6 +126,9 @@ let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
             (if is_decided_unsat (get_subgoal result 0) 
             then(
               (*print_endline("unsat");*)
+              let finish_time = Sys.time ()
+              in sat_timer := !sat_timer +. (finish_time -. start_time);
+
               (false, [])
             )
             else( 
@@ -132,6 +140,11 @@ let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
               (* in print_endline(pretty_print_evt_list [goals_to_exp subgoals]);
               print_endline("RESULTING:");
               print_endline (pretty_print_evt_list resulting_exp); *)
-              in (true, resulting_exp)
+              in 
+              
+              let finish_time = Sys.time ()
+              in sat_timer := !sat_timer +. (finish_time -. start_time);
+              
+              (true, resulting_exp)
             ));
         )

@@ -96,7 +96,7 @@ let rec rc (ms: Ast.Monitor.t list) (sevt: Ast.SymbolicEvent.t) (cs: Ast.Express
     | mon::mons -> ((inner_rc mon sevt cs) @ (rc mons sevt cs))
 
 let rec combnk k lst =
-  print_endline("choose "^string_of_int(k));
+  print_all_messages("choose "^string_of_int(k));
   let rec inner result k lst =
     match k with
     | 0 -> [[]]
@@ -134,18 +134,6 @@ let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.E
         in if (fst sat_result) 
            then (snd sat_result) @ (filter_sat cs)
            else filter_sat cs
-    
-    (* in let rec check_all (ll: Ast.Expression.t list) =
-      match ll with 
-      | [] -> []
-      | x::xs -> 
-        let satis = sat [x] in 
-        if (fst satis) 
-        then (snd satis) @ check_all xs
-        else (print_endline("NOT SAT!!"); check_all xs) *)
-
-    (* in let snd_partition = check_all (snd partition) *)
-    (* in print_endline("now they are "^ pretty_print_evt_list snd_partition);  *)
     
     in let rec create_one_combination (cs: Ast.Expression.t list) (indices: int list) (counter: int) (result: Ast.Expression.t list): Ast.Expression.t list = 
       match cs with
@@ -359,7 +347,14 @@ let isSymControllable (mon: Ast.Monitor.t list) =
                   let c = List.sort_uniq compare (rc (snd cm) s []) in (
                     print_all_messages (pretty_print_evt_list c);
                     
+                    sat_timer := 0.0; (*since sat solver is also used in saft*)
+                    let sc_start_time = Sys.time () in 
                     let sat_cond = sc (fst cm) c [] in 
+                      let sc_finish_time = Sys.time () in
+                      print_endline("Total time taken for SC is " ^ string_of_float(sc_finish_time -. sc_start_time));
+                      print_endline("Time taken to from SAT solver is " ^ string_of_float(!sat_timer));
+                      sat_timer := 0.0;
+
                       print_all_messages ("\nSatisfiability Conditions (SC) " ^ (pretty_print_evt_list sat_cond));
 
                       let rec spa_all_options conds = 
