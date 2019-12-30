@@ -184,19 +184,12 @@ let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.E
             | [] -> (create_all_combinations is)
             | _ -> combination  @ (create_all_combinations is)
           )
-          
-        (* | i::is -> (filter_sat (b @ (create_one_combination cs i 1 []))) @ (create_all_combinations is) *)
-
       in let rec combinations n = 
         match n with 
         | 0 -> filter_sat (b @ cs) (*in "n choose 0" none of the conditions are negated*)
         | n ->  (create_all_combinations (combnk n num_list)) @ (combinations (n-1))
       
-        in combinations (List.length cs)
-
-        (* in create_all_combinations (combnk 9 num_list); b *)
-
-                  
+        in combinations (List.length cs)            
 
 (* A constrained monitor-set <b,M> symbolically potentially reaches a verdict spr(<b,M>,w) if the monitor set M can immediately reach a verdict without requiring tau transitions *)
 let rec spr (cms: Ast.Expression.t list * Ast.Monitor.t list) (verdict_list: int list): bool =
