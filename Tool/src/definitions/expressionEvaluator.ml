@@ -204,27 +204,32 @@ let rec check_in_list (e: Ast.Expression.t) (l: Ast.Identifier.t list): bool =
       else check_in_list e xs
     | _ -> check_in_list e xs 
   
-(*filters an expression by removing all the expressions which are not in to_keep*)
-let rec filter_b (b: Ast.Expression.t list) (to_keep: Ast.Identifier.t list) =
-  let b = List.hd b in
-  match b with 
-  | Ast.Expression.BinaryExp(x) -> 
-     (match x.operator with 
-     | And ->
-        (match (filter_b [x.arg_lt] to_keep), (filter_b [x.arg_rt] to_keep) with 
-          | [], [] -> []
-          | [], rt -> rt
-          | lt, [] -> lt
-          | lt, rt -> [add_binary_condition (List.hd lt) (List.hd rt) x.operator]
-        )
-     | _ -> (
-        if (check_in_list x.arg_lt to_keep) || (check_in_list x.arg_rt to_keep)
-        then [b]
-        else []))
+(*filters an expression by trying to remove all the expressions which are not in to_keep*)
+let rec filter_b (cond: Ast.Expression.t list) (to_keep: Ast.Identifier.t list) =
+  let rec inner_filter_b (cond: Ast.Expression.t list): Ast.Expression.t list =
+  match cond with
+  | [] -> []
+  | b::bs ->
+    (match b with 
+    | Ast.Expression.BinaryExp(x) -> 
+      (match x.operator with 
+      | And ->
+          (match (inner_filter_b [x.arg_lt]), (inner_filter_b [x.arg_rt]) with 
+            | [], [] -> (inner_filter_b bs)
+            | [], rt -> rt @ (inner_filter_b bs)
+            | lt, [] -> lt @ (inner_filter_b bs)
+            | lt, rt -> [add_binary_condition (List.hd lt) (List.hd rt) x.operator] @ (inner_filter_b bs)
+          )
+      | _ -> (
+          if (check_in_list x.arg_lt to_keep) || (check_in_list x.arg_rt to_keep)
+          then [b] @ (inner_filter_b bs)
+          else (inner_filter_b bs)))
 
-  | Ast.Expression.UnaryExp(x) ->
-    if check_in_list x.arg to_keep 
-	  then [b]
-    else []
-  | Ast.Expression.Literal(x) -> [] (*in the case when the bool cond it true*)
-  | _ -> [b]    
+    | Ast.Expression.UnaryExp(x) ->
+      if check_in_list x.arg to_keep 
+      then [b] @ (inner_filter_b bs)
+      else (inner_filter_b bs)
+    | Ast.Expression.Literal(x) -> (inner_filter_b bs) (*in the case when the bool cond is true*)
+    | _ -> [b] @ (inner_filter_b bs)  
+    )
+  in inner_filter_b cond 
