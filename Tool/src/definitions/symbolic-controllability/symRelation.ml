@@ -236,13 +236,6 @@ let rec spr (cms: Ast.Expression.t list * Ast.Monitor.t list) (verdict_list: int
 (*return a tuple made up of a boolean value and the simplified boolean condition *)
 (*the second element of the tuple is always [] whenver spa is false *)
 let rec spa (cms: Ast.Expression.t list * Ast.Monitor.t list) (evt: Ast.SymbolicEvent.t) (c: Ast.Expression.t) (spa_list: int list): bool =
-  (*let satisfiable = match fst cms with
-    | [] -> (sat [c])
-    | b::bs -> (sat [add_binary_condition b c (Ast.Expression.BinaryExp.And)])  *)
-  (*let satisfiable = sat [c] in 
-  if fst satisfiable == false (*if not sat(b^c) return false immediately*) 
-  then (false, [])
-  else ( *)
     let rec check_all_conds (mon_list:Ast.Monitor.t list) = 
       match mon_list with
       | [] -> false
@@ -267,24 +260,74 @@ let rec print_all (a) =
     print_all xs; 
     print_all_messages (print_identifier_string x)
 
-let rec cns (b: Ast.Expression.t list) (mon_list: Ast.Monitor.t list): Ast.Expression.t list = 
-  let v = fv ([], mon_list) Vars.empty in 
-  let rec prt (condition: Ast.Expression.t list) (b1: Ast.Expression.t list): Ast.Expression.t list =
-    match condition with 
-    | [] -> b1
-    | c::cs -> 
-      (match c with 
-      | Ast.Expression.BinaryExp(x) -> prt ([x.arg_lt] @ [x.arg_rt]) b1
-      | _ -> 
-        let fv_cond = fv (b, []) Vars.empty
-        in let v_inter = Vars.inter fv_cond v
-        in if Vars.is_empty v_inter (*then whole condition is in b2 and can be discarded*)
-        then prt cs b1
-        else if Vars.subset fv_cond v_inter (*then fv(b1) subset V*)
-        then prt cs (b1 @ [c]) 
-        else prt cs b (*return <b, true>*)
+(*checks if there are any dependant variables*)
+(*a variable may be dependent on another in two ways:*)
+(*OPTION 1*)
+(*it is part of some subcondition example y=x+1 where x is the variable to be kept*)
+(*OPTION 2*)
+(*it is part of some unary condition example !(x<5 && y>6) where x is the variable to be kept*)
+let rec indirect_dependency (b: Ast.Expression.t list) (to_keep: Vars.t): Vars.t = 
+  let rec inner_check (b: Ast.Expression.t list) (to_keep: Vars.t): Vars.t =
+    match b with
+    | [] -> to_keep
+    | b1::bs ->
+      (match b1 with 
+      | Ast.Expression.BinaryExp(x)->
+      (match x.operator with
+        | Ast.Expression.BinaryExp.And -> 
+          Vars.union (inner_check [x.arg_lt] to_keep) (inner_check [x.arg_rt] to_keep)
+        | _ -> 
+          if check_in_list (x.arg_rt) (Vars.elements to_keep)
+          then Vars.union (fv ([x.arg_lt],[]) to_keep) (inner_check bs to_keep)
+          else if check_in_list (x.arg_lt) (Vars.elements to_keep)
+          then Vars.union (fv ([x.arg_rt],[]) to_keep) (inner_check bs to_keep)
+          else inner_check bs to_keep
       )
-    in prt b []
+      | Ast.Expression.UnaryExp(x) -> 
+        if check_in_list x.arg (Vars.elements to_keep) (*if there is some var to be kept, then all those vars must also be kept*)
+        then Vars.union to_keep (fv ([x.arg], []) Vars.empty)
+        else (inner_check bs to_keep)
+      | _ -> inner_check bs to_keep)
+	in let new_to_keep = inner_check b to_keep in
+	if Vars.diff to_keep new_to_keep != Vars.empty (*check if new ones have been added*)
+  then indirect_dependency b new_to_keep (*new vars have been added - redo*)
+	else new_to_keep 
+
+(*cns returns the consolidated boolean condition*)
+(*if there are no free variables in the monitor-set i.e. v=empty, then all the boolean conditions can be removed and b1 is empty*)
+(*otherwise, call prt which returns b1 which is the list of boolean conditions to be kept*)
+(*if there are no variables in the boolean condition, then all the conditions can be removed*)
+(*otherwise, all the variables in the instersection of v and fv_b must be kept*)
+(*also, the variables upon which those in the intersection depend must be kept*)
+(*a variables is dependent on another either if there is some other subcondition that mentions a var in to_keep or it is part of a unary condition that contains a var in to_keep*)
+(*after calculating the set of vars to be kept, check whether to_keep is a subset of v*)
+(*if to_keep is not a subset of v, then the condition has been violated and no condition can be removed*)
+
+let cns (b: Ast.Expression.t list) (mon_list: Ast.Monitor.t list): Ast.Expression.t list =
+  let v = fv ([], mon_list) Vars.empty in (*V = fv(saft(M, B, $))*)
+  print_all_messages("free V: ");
+  print_all (Vars.elements v);
+
+  let prt (b: Ast.Expression.t list) (v: Vars.t): Ast.Expression.t list = 
+    let fv_b = (match List.length b with 
+      | 0 -> Vars.empty
+      | _ -> fv (b, []) Vars.empty) in 
+    print_all_messages("free b: ");
+    print_all (Vars.elements fv_b); 
+    if Vars.is_empty v
+    then []
+    else( 
+      let to_keep = Vars.inter fv_b v in 
+      (*check if any of those to keep are dependent on any from the ones to be discarded*)
+      (* let to_keep = indirect_dependency (List.hd b) to_keep  *)
+      let to_keep = indirect_dependency b to_keep 
+      in if Vars.subset to_keep v
+      then filter_b b (Vars.elements to_keep)
+      else b 
+    )
+  in if Vars.is_empty v 
+  then []
+  else prt b v 
 	  
 let rec osaft (cm: (Ast.Expression.t list * Ast.Monitor.t list)) (evt: Ast.SymbolicEvent.t) (c: Ast.Expression.t) (relation: (Ast.Expression.t list * Ast.Monitor.t list) list) =
   let rec saft_aux (m: Ast.Monitor.t list) (res: (Ast.Expression.t list * Ast.Monitor.t list)) =
