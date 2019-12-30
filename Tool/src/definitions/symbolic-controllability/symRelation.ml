@@ -111,9 +111,11 @@ let rec combnk k lst =
           in inner new_result k xs
     in inner [] k lst     
 
-
-(*
-let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.Expression.t list list): Ast.Expression.t list =
+(* * [Satisfiably Combinations] returns a list of satisfiable combinations *)
+(* b stores the list of boolean conditions of the constrained-monitor set *)
+(* c stores the list of reachable boolean condition *)
+(* returns a list of lists of boolean condition where each list represents boolean conditions added together usings ANDs *)
+let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.Expression.t list list): Ast.Expression.t list list =
   (*create a list of consecutive numbers*)
   let rec create_list (n:int): int list =
     match n with 
@@ -126,94 +128,41 @@ let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.E
          | 0 -> [[]]
          | n -> (combnk n num_list) @ combinations (n - 1)
       
-      in let op = Ast.Expression.BinaryExp.And in
-          let rec create_one_combination (cs: Ast.Expression.t list) (indices: int list) (counter: int): Ast.Expression.t = 
-            match cs with
-              | x::[] -> 
-                if element_exists_in_list indices counter
-                  then add_unary_condition x 
-                else x  
-              | x::xs -> 
-                if element_exists_in_list indices counter
-                  then add_binary_condition (add_unary_condition x) (create_one_combination xs indices (counter + 1)) op
-                else add_binary_condition x (create_one_combination xs indices (counter + 1)) op 
-         
-              in let sc_list = 
-                (let rec create_all_combinations (indices_list: int list list): Ast.Expression.t list = 
-                  match indices_list with
-                   | [[]] -> (*then none of the conditions are negated*)
-                    (let rec all_true (cs: Ast.Expression.t list): Ast.Expression.t = match cs with 
-                      |[] -> Ast.Expression.Literal(Bool(true))
-                      |x::[] -> x
-                      |x::xs -> add_binary_condition x (all_true xs) (Ast.Expression.BinaryExp.And)
-                    in [(all_true cs)];
-                    ) 
-                  | i::is -> [(create_one_combination cs i 1)] @ (create_all_combinations is)
-                in create_all_combinations (combinations (List.length cs)); )
+        in let rec create_one_combination (cs: Ast.Expression.t list) (indices: int list) (counter: int): Ast.Expression.t list = 
+          match cs with
+            | [] -> [Ast.Expression.Literal(Bool(true))]
+            | x::[] -> 
+              if element_exists_in_list indices counter
+              then [add_unary_condition x] 
+              else [x]  
+            | x::xs -> 
+              if element_exists_in_list indices counter
+              then [add_unary_condition x] @ (create_one_combination xs indices (counter + 1))
+              else [x] @ (create_one_combination xs indices (counter + 1))
+        
+            in let sc_list = 
+              (let rec create_all_combinations (indices_list: int list list): Ast.Expression.t list list = 
+                match indices_list with
+                | [] -> (*none of the conditions are negated*)
+                    let comb = create_one_combination cs [] 1  
+                    in if sat comb 
+                    then [comb] 
+                    else []
+                | i::is -> 
+                    let comb = create_one_combination cs i 1 
+                    in if sat comb 
+                    then [comb] @ create_all_combinations is
+                    else (create_all_combinations is)
+              in create_all_combinations (combinations (List.length cs)); )
 
-                in match b with
-                | [] -> sc_list
-                | b::[] -> 
-                  (let rec add_b sc_list: Ast.Expression.t list = 
-                    match sc_list with 
-                      | [] -> [] 
-                      | y::ys -> 
-                        let new_cond = [add_binary_condition b y op] in new_cond @ (add_b ys)
-                    in add_b sc_list)
-*)
-
-(* * [Satisfiably Combinations] returns a list of combinations, even if they are not satisfiable      *)
-let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.Expression.t list list): Ast.Expression.t list =
-  (*create a list of consecutive numbers*)
-  let rec create_list (n:int): int list =
-    match n with 
-      | 0 -> []
-      | some_n -> some_n :: (create_list (n-1))  
-    in let num_list = create_list (List.length cs) in
-
-      let rec combinations n =
-        match n with
-         | 0 -> [[]]
-         | n -> (combnk n num_list) @ combinations (n - 1)
-      
-      in let op = Ast.Expression.BinaryExp.And in
-          let rec create_one_combination (cs: Ast.Expression.t list) (indices: int list) (counter: int): Ast.Expression.t = 
-            match cs with
-              | [] -> Ast.Expression.Literal(Bool(true))
-              | x::[] -> 
-                if element_exists_in_list indices counter
-                  then add_unary_condition x 
-                else x  
-              | x::xs -> 
-                if element_exists_in_list indices counter
-                  then add_binary_condition (add_unary_condition x) (create_one_combination xs indices (counter + 1)) op
-                else add_binary_condition x (create_one_combination xs indices (counter + 1)) op 
-         
-              in let sc_list = 
-                (let rec create_all_combinations (indices_list: int list list): Ast.Expression.t list = 
-                  match indices_list with
-                  | [[]] -> (*none of the conditions are negated*)
-                     let comb = [create_one_combination cs [] 1]    
-                     in if sat comb 
-                     then comb 
-                     else []
-                  | i::is -> 
-                      let comb = [(create_one_combination cs i 1)] 
-                      in if sat comb 
-                      then comb @ (create_all_combinations is)
-                      else (create_all_combinations is)
-                in create_all_combinations (combinations (List.length cs)); )
-
-                in match b with
-                | [] -> sc_list
-                | b::[] -> 
-                  (let rec add_b sc_list: Ast.Expression.t list = 
-                    match sc_list with 
-                      | [] -> [] 
-                      | y::ys -> 
-                        let new_cond = [add_binary_condition b y op] in new_cond @ (add_b ys)
-                    in add_b sc_list)
-             
+              in match b with
+              | [] -> sc_list
+              | _ -> 
+                (let rec add_b (sc_list: Ast.Expression.t list list) = 
+                  match sc_list with 
+                    | [] -> [] 
+                    | y::ys -> [b @ y] @ (add_b ys)
+                  in add_b sc_list)
 
 (* A constrained monitor-set <b,M> symbolically potentially reaches a verdict spr(<b,M>,w) if the monitor set M can immediately reach a verdict without requiring tau transitions *)
 let rec spr (cms: Ast.Expression.t list * Ast.Monitor.t list) (verdict_list: int list): bool =
@@ -250,14 +199,7 @@ let rec spr (cms: Ast.Expression.t list * Ast.Monitor.t list) (verdict_list: int
         else spr (fst cms, elts) (verdict_list @ [0])
     ) 
 
-let rec spa (cms: Ast.Expression.t list * Ast.Monitor.t list) (evt: Ast.SymbolicEvent.t) (c: Ast.Expression.t) (spa_list: int list): bool =
-  (*let satisfiable = match fst cms with
-    | [] -> (sat [c])
-    | b::bs -> (sat [add_binary_condition b c (Ast.Expression.BinaryExp.And)])  *)
-  (* let satisfiable = sat [c] in 
-  if satisfiable == false (*if not sat(b^c) return false immediately*) 
-  then false
-  else ( *)
+let rec spa (cms: Ast.Expression.t list * Ast.Monitor.t list) (evt: Ast.SymbolicEvent.t) (c: Ast.Expression.t list) (spa_list: int list): bool =
     let rec check_all_conds (mon_list:Ast.Monitor.t list) = 
       match mon_list with
       | [] -> false 
@@ -281,26 +223,76 @@ let rec print_all (a) =
     print_all xs; 
     print_all_messages (print_identifier_string x)
 
-let rec cns (b: Ast.Expression.t list) (mon_list: Ast.Monitor.t list): Ast.Expression.t list = 
-  let v = fv ([], mon_list) Vars.empty in 
-  let rec prt (condition: Ast.Expression.t list) (b1: Ast.Expression.t list): Ast.Expression.t list =
-    match condition with 
-    | [] -> b1
-    | c::cs -> 
-      (match c with 
-      | Ast.Expression.BinaryExp(x) -> prt ([x.arg_lt] @ [x.arg_rt]) b1
-      | _ -> 
-        let fv_cond = fv (b, []) Vars.empty
-        in let v_inter = Vars.inter fv_cond v
-        in if Vars.is_empty v_inter (*then whole condition is in b2 and can be discarded*)
-        then prt cs b1
-        else if Vars.subset fv_cond v_inter (*then fv(b1) subset V*)
-        then prt cs (b1 @ [c]) 
-        else prt cs b (*return <b, true>*)
+(*checks if there are any dependant variables*)
+(*a variable may be dependent on another in two ways:*)
+(*OPTION 1*)
+(*it is part of some subcondition example y=x+1 where x is the variable to be kept*)
+(*OPTION 2*)
+(*it is part of some unary condition example !(x<5 && y>6) where x is the variable to be kept*)
+let rec indirect_dependency (b: Ast.Expression.t list) (to_keep: Vars.t): Vars.t = 
+  let rec inner_check (b: Ast.Expression.t list) (to_keep: Vars.t): Vars.t =
+    match b with
+    | [] -> to_keep
+    | b1::bs ->
+      (match b1 with 
+      | Ast.Expression.BinaryExp(x)->
+      (match x.operator with
+        | Ast.Expression.BinaryExp.And -> 
+          Vars.union (inner_check [x.arg_lt] to_keep) (inner_check [x.arg_rt] to_keep)
+        | _ -> 
+          if check_in_list (x.arg_rt) (Vars.elements to_keep)
+          then Vars.union (fv ([x.arg_lt],[]) to_keep) (inner_check bs to_keep)
+          else if check_in_list (x.arg_lt) (Vars.elements to_keep)
+          then Vars.union (fv ([x.arg_rt],[]) to_keep) (inner_check bs to_keep)
+          else inner_check bs to_keep
       )
-    in prt b []
+      | Ast.Expression.UnaryExp(x) -> 
+        if check_in_list x.arg (Vars.elements to_keep) (*if there is some var to be kept, then all those vars must also be kept*)
+        then Vars.union to_keep (fv ([x.arg], []) Vars.empty)
+        else (inner_check bs to_keep)
+      | _ -> inner_check bs to_keep)
+	in let new_to_keep = inner_check b to_keep in
+	if Vars.diff to_keep new_to_keep != Vars.empty (*check if new ones have been added*)
+  then indirect_dependency b new_to_keep (*new vars have been added - redo*)
+	else new_to_keep 
+
+(*cns returns the consolidated boolean condition*)
+(*if there are no free variables in the monitor-set i.e. v=empty, then all the boolean conditions can be removed and b1 is empty*)
+(*otherwise, call prt which returns b1 which is the list of boolean conditions to be kept*)
+(*if there are no variables in the boolean condition, then all the conditions can be removed*)
+(*otherwise, all the variables in the instersection of v and fv_b must be kept*)
+(*also, the variables upon which those in the intersection depend must be kept*)
+(*a variables is dependent on another either if there is some other subcondition that mentions a var in to_keep or it is part of a unary condition that contains a var in to_keep*)
+(*after calculating the set of vars to be kept, check whether to_keep is a subset of v*)
+(*if to_keep is not a subset of v, then the condition has been violated and no condition can be removed*)
+
+let cns (b: Ast.Expression.t list) (mon_list: Ast.Monitor.t list): Ast.Expression.t list =
+  let v = fv ([], mon_list) Vars.empty in (*V = fv(saft(M, B, $))*)
+  print_all_messages("free V: ");
+  print_all (Vars.elements v);
+
+  let prt (b: Ast.Expression.t list) (v: Vars.t): Ast.Expression.t list = 
+    let fv_b = (match List.length b with 
+      | 0 -> Vars.empty
+      | _ -> fv (b, []) Vars.empty) in 
+    print_all_messages("free b: ");
+    print_all (Vars.elements fv_b); 
+    if Vars.is_empty v
+    then []
+    else( 
+      let to_keep = Vars.inter fv_b v in 
+      (*check if any of those to keep are dependent on any from the ones to be discarded*)
+      (* let to_keep = indirect_dependency (List.hd b) to_keep  *)
+      let to_keep = indirect_dependency b to_keep 
+      in if Vars.subset to_keep v
+      then filter_b b (Vars.elements to_keep)
+      else b 
+    )
+  in if Vars.is_empty v 
+  then []
+  else prt b v 
 	  
-let rec osaft (cm: (Ast.Expression.t list * Ast.Monitor.t list)) (evt: Ast.SymbolicEvent.t) (c: Ast.Expression.t) (relation: (Ast.Expression.t list * Ast.Monitor.t list) list) =
+let rec osaft (cm: (Ast.Expression.t list * Ast.Monitor.t list)) (evt: Ast.SymbolicEvent.t) (c: Ast.Expression.t list) (relation: (Ast.Expression.t list * Ast.Monitor.t list) list) =
   let rec saft_aux (m: Ast.Monitor.t list) (res: (Ast.Expression.t list * Ast.Monitor.t list)) =
 
     let rec new_monitors mon_list = 
@@ -312,7 +304,7 @@ let rec osaft (cm: (Ast.Expression.t list * Ast.Monitor.t list)) (evt: Ast.Symbo
 
     (match m with
     | [] -> 
-        print_all_messages ("\nReturned by SAFT " ^ (pretty_print_monitor_list_string (snd res)));
+        print_all_messages ("\nReturned by SAFT " ^ (pretty_print_evt_list (fst res)) ^ " ; "^ (pretty_print_monitor_list_string (snd res)));
         let optimized_res = ((cns (fst res) (snd res)), (snd res)) in
         print_all_messages ("cond before was " ^ (pretty_print_evt_list (fst res)));
         print_all_messages ("cond after is " ^ (pretty_print_evt_list (fst optimized_res)));
@@ -320,7 +312,8 @@ let rec osaft (cm: (Ast.Expression.t list * Ast.Monitor.t list)) (evt: Ast.Symbo
         (Queue.push optimized_res unseen_cms)
     | ms::mss -> (
         let resulting_mons = sym_reduce ms (fst cm) evt c 
-        in saft_aux mss ([c], (add_monitors_not_in_list (snd res) (new_monitors resulting_mons))) (*use add_monitors_not_in_list to make sure not to add duplicates*)              
+        in saft_aux mss (c, (add_monitors_not_in_list (snd res) (new_monitors resulting_mons))) (*use add_monitors_not_in_list to make sure not to add duplicates*)              
+        (* in saft_aux mss ([c], (add_monitors_not_in_list (snd res) (new_monitors resulting_mons))) (*use add_monitors_not_in_list to make sure not to add duplicates*)               *)
     ))
   in saft_aux (snd cm) ([],[])
 
@@ -390,14 +383,23 @@ let isSymControllable (mon: Ast.Monitor.t list) =
                     print_all_messages (pretty_print_evt_list c);
                     
                     let sat_cond = sc (fst cm) c [] in 
-                      print_all_messages ("\nSatisfiability Conditions (SC) " ^ (pretty_print_evt_list sat_cond));
+                      let rec print_sc (to_print) = 
+                        match to_print with 
+                        | [] -> ()
+                        | x::xs -> 
+                          print_all_messages (pretty_print_evt_list x);
+                          print_sc xs
+                      in print_all_messages ("\nSatisfiability Conditions (SC) ");
+                      print_sc sat_cond;
+                      (* print_all_messages ("\nSatisfiability Conditions (SC) " ^ (pretty_print_evt_list sat_cond)); *)
 
-                      let rec spa_all_options conds = 
+                      let rec spa_all_options (conds: Ast.Expression.t list list) = 
                         match conds with 
                          | [] -> print_all_messages ("there are no more conditions to analyse")
                          | sc1::sc2 -> 
 							              let spa_result = spa cm s sc1 [] in 	
-                              print_all_messages ("SPA For condition " ^ (pretty_print_evt_list [sc1]) ^ " is " ^ string_of_bool (spa_result));      
+                              (* print_all_messages ("SPA For condition " ^ (pretty_print_evt_list [sc1]) ^ " is " ^ string_of_bool (spa_result));       *)
+                              print_all_messages ("SPA For condition " ^ (pretty_print_evt_list sc1) ^ " is " ^ string_of_bool (spa_result));      
                               if spa_result (*if spa is true, then saft must also hold, otherwise go to the next condition*)
                               then (
                                 osaft cm s sc1 relation;
