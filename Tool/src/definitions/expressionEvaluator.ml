@@ -2,8 +2,6 @@ open EnvResources
 open EnvFunctions
 open PrettyPrint
 
-(*let counter_rename = ref 0*) (*counter used to generate the fresh vars to rename bound vars*)
-
 (*function to compute values for expressions which can be found within a monitor description*)
 let rec reduce_expression (exp: Ast.Expression.t): expression_type =
   match exp with
@@ -159,33 +157,6 @@ let rec inner_sub_eval (mon: Ast.Monitor.t) (y) (to_sub): Ast.Monitor.t =
       then create_evaluate_mon x.var (substitute_expression x.subst y to_sub) x.stmt
       else create_evaluate_mon x.var (substitute_expression x.subst y to_sub) (inner_sub_eval x.stmt y to_sub)  
 
-(*let rec inner_sub_rec (mon: Ast.Monitor.t) (y: Ast.TVar.t) (to_sub: Ast.Monitor.t) = 
-  match mon with 
-  | Ast.Monitor.TVar(x) ->
-    if String.compare x.tvar y.tvar == 0
-    then 
-      (*substitute with the recursion monitor in the mapping*)
-      (match TVars.find_opt y.tvar !mapTVar with
-      | Some m -> m
-      | None -> mon)
-    else mon
-  | Ast.Monitor.QuantifiedGuard(x) -> 
-    create_quant_guard_mon x.label x.payload (inner_sub_rec x.consume y to_sub)
-  | Ast.Monitor.ExpressionGuard(x) -> 
-    create_exp_guard_mon x.label x.payload (inner_sub_rec x.consume y to_sub)
-  | Ast.Monitor.Choice(x) ->
-    create_choice_mon (inner_sub_rec x.left y to_sub) (inner_sub_rec x.right y to_sub)
-  | Ast.Monitor.Conditional(x) -> 
-    create_conditional_mon x.condition (inner_sub_rec x.if_true y to_sub) (inner_sub_rec x.if_false y to_sub)
-  | Ast.Monitor.Evaluate(x) ->  
-    create_evaluate_mon x.var x.subst (inner_sub_rec x.stmt y to_sub)
-  | Ast.Monitor.Recurse(x) ->
-    if String.compare x.monvar.tvar y.tvar == 0
-    then mon
-    else create_recurse_mon x.monvar (inner_sub_rec x.consume y to_sub)
-  | _ -> mon
-  *)
-
   let rec inner_sub_rec (mon: Ast.Monitor.t) (y: Ast.TVar.t) (to_sub: Ast.Monitor.t) = 
     match mon with 
     | Ast.Monitor.TVar(x) ->
@@ -208,29 +179,11 @@ let rec inner_sub_eval (mon: Ast.Monitor.t) (y) (to_sub): Ast.Monitor.t =
       create_evaluate_mon x.var x.subst (inner_sub_rec x.stmt y to_sub)
     | Ast.Monitor.Recurse(x) ->
       print_endline("rec mon was found");
-      (*if tvar is already in the list, then it must be renamed since that tvar is already bound*)
-(*      (match TVars.find_opt x.monvar.tvar !mapTVar with
-      | None -> 
-        mapTVar := TVars.add x.monvar.tvar x.consume !mapTVar;
-        x.consume
-        (*unfold the rec monitor before checking for other rec monitors*)
-      (*| Some n -> print_endline("must rename")); *)
-      | Some n -> 
-        print_endline ("renaming because this monitor is already bound"); 
-        let new_tvar = fresh_tvar in 
-        let new_mon = substitute_tvar x.consume x.monvar new_tvar in 
-        mapTVar := TVars.add new_tvar.tvar new_mon !mapTVar;
-        new_mon)
-*)
       (match TVars.find_opt x.monvar.tvar !mapTVar with
       | None -> 
         mapTVar := TVars.add x.monvar.tvar x.consume !mapTVar; 
       | Some n -> print_endline("must rename"));    
         x.consume
-
-      (*if String.compare x.monvar.tvar y.tvar == 0
-      then mon
-      else create_recurse_mon x.monvar (inner_sub_rec x.consume y to_sub)*) 
     | _ -> mon
 
 (*checks if an expression is in a list of identifiers*)
@@ -252,28 +205,33 @@ let rec check_in_list (e: Ast.Expression.t) (l: Ast.Identifier.t list): bool =
       then true
       else check_in_list e xs
     | _ -> check_in_list e xs 
-  
-(*filters an expression by removing all the expressions which are not in to_keep*)
-let rec filter_b (b: Ast.Expression.t list) (to_keep: Ast.Identifier.t list) =
-  let b = List.hd b in
-  match b with 
-  | Ast.Expression.BinaryExp(x) -> 
-     (match x.operator with 
-     | And ->
-        (match (filter_b [x.arg_lt] to_keep), (filter_b [x.arg_rt] to_keep) with 
-          | [], [] -> []
-          | [], rt -> rt
-          | lt, [] -> lt
-          | lt, rt -> [add_binary_condition (List.hd lt) (List.hd rt) x.operator]
-        )
-     | _ -> (
-        if (check_in_list x.arg_lt to_keep) || (check_in_list x.arg_rt to_keep)
-        then [b]
-        else []))
 
-  | Ast.Expression.UnaryExp(x) ->
-    if check_in_list x.arg to_keep 
-	  then [b]
-    else []
-  | Ast.Expression.Literal(x) -> [] (*in the case when the bool cond it true*)
-  | _ -> [b]    
+(*filters an expression by trying to remove all the expressions which are not in to_keep*)
+let rec filter_b (cond: Ast.Expression.t list) (to_keep: Ast.Identifier.t list) =
+  let rec inner_filter_b (cond: Ast.Expression.t list): Ast.Expression.t list =
+  match cond with
+  | [] -> []
+  | b::bs ->
+    (match b with 
+    | Ast.Expression.BinaryExp(x) -> 
+      (match x.operator with 
+      | And ->
+          (match (inner_filter_b [x.arg_lt]), (inner_filter_b [x.arg_rt]) with 
+            | [], [] -> (inner_filter_b bs)
+            | [], rt -> rt @ (inner_filter_b bs)
+            | lt, [] -> lt @ (inner_filter_b bs)
+            | lt, rt -> [add_binary_condition (List.hd lt) (List.hd rt) x.operator] @ (inner_filter_b bs)
+          )
+      | _ -> (
+          if (check_in_list x.arg_lt to_keep) || (check_in_list x.arg_rt to_keep)
+          then [b] @ (inner_filter_b bs)
+          else (inner_filter_b bs)))
+
+    | Ast.Expression.UnaryExp(x) ->
+      if check_in_list x.arg to_keep 
+      then [b] @ (inner_filter_b bs)
+      else (inner_filter_b bs)
+    | Ast.Expression.Literal(x) -> (inner_filter_b bs) (*in the case when the bool cond is true*)
+    | _ -> [b] @ (inner_filter_b bs)  
+    )
+  in inner_filter_b cond 
