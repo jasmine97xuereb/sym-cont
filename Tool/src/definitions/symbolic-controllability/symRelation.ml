@@ -152,7 +152,7 @@ let rec combnk k lst =
                     | i::is -> (filter_sat (b @ (create_one_combination cs i 1 []))) @ (create_all_combinations is)
                   in create_all_combinations (combinations ((List.length cs)-1)) *)
 
-let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.Expression.t list list): Ast.Expression.t list =
+(* let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.Expression.t list list): Ast.Expression.t list =
   (*create a list of consecutive numbers*)
   let rec create_list (n:int): int list =
     match n with 
@@ -189,7 +189,55 @@ let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.E
         | 0 -> filter_sat (b @ cs) (*in "n choose 0" none of the conditions are negated*)
         | n ->  (create_all_combinations (combnk n num_list)) @ (combinations (n-1))
       
-        in combinations (List.length cs)            
+        in combinations (List.length cs)             *)
+
+(* * [Satisfiably Combinations] returns a list of satisfiable combinations *)
+(* b stores the list of boolean conditions of the constrained-monitor set *)
+(* c stores the list of reachable boolean condition *)
+(* returns a list of lists of boolean condition where each list represents boolean conditions added together usings ANDs *)
+let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.Expression.t list list): Ast.Expression.t list =
+  (*create a list of consecutive numbers*)
+  let rec create_list (n:int): int list =
+    match n with 
+      | 0 -> []
+      | some_n -> some_n :: (create_list (n-1))  
+    in let num_list = create_list (List.length cs) 
+
+    in let rec combinations n =
+      match n with
+        | 0 -> [[]]
+        | n -> (combnk n num_list) @ combinations (n - 1)
+    
+      in let rec create_one_combination (cs: Ast.Expression.t list) (indices: int list) (counter: int): Ast.Expression.t list = 
+        match cs with
+          | [] -> [Ast.Expression.Literal(Bool(true))]
+          | x::[] -> 
+            if element_exists_in_list indices counter
+            then [add_unary_condition x] 
+            else [x]  
+          | x::xs -> 
+            if element_exists_in_list indices counter
+            then [add_unary_condition x] @ (create_one_combination xs indices (counter + 1))
+            else [x] @ (create_one_combination xs indices (counter + 1))
+      
+          in let sc_list = 
+            (let rec create_all_combinations (indices_list: int list list): Ast.Expression.t list = 
+              match indices_list with
+              | [] -> (*none of the conditions are negated*)
+                  let comb = b @ (create_one_combination cs [] 1)  
+                  in let result = sat comb
+                  in if fst result
+                  then snd result 
+                  else []
+              | i::is -> 
+                  let comb = b @ (create_one_combination cs i 1) 
+                  in let result = sat comb in 
+                  if fst result
+                  then (snd result) @ create_all_combinations is
+                  else (create_all_combinations is)
+            in create_all_combinations (combinations (List.length cs)); )
+
+          in sc_list
 
 (* A constrained monitor-set <b,M> symbolically potentially reaches a verdict spr(<b,M>,w) if the monitor set M can immediately reach a verdict without requiring tau transitions *)
 let rec spr (cms: Ast.Expression.t list * Ast.Monitor.t list) (verdict_list: int list): bool =
