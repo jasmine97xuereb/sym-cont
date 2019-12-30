@@ -144,25 +144,26 @@ let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.E
               (let rec create_all_combinations (indices_list: int list list): Ast.Expression.t list list = 
                 match indices_list with
                 | [] -> (*none of the conditions are negated*)
-                    let comb = create_one_combination cs [] 1  
+                    let comb = b @ (create_one_combination cs [] 1)  
                     in if sat comb 
                     then [comb] 
                     else []
                 | i::is -> 
-                    let comb = create_one_combination cs i 1 
+                    let comb = b @ (create_one_combination cs i 1) 
                     in if sat comb 
                     then [comb] @ create_all_combinations is
                     else (create_all_combinations is)
               in create_all_combinations (combinations (List.length cs)); )
 
-              in match b with
+              in sc_list
+              (* in match b with
               | [] -> sc_list
               | _ -> 
                 (let rec add_b (sc_list: Ast.Expression.t list list) = 
                   match sc_list with 
                     | [] -> [] 
                     | y::ys -> [b @ y] @ (add_b ys)
-                  in add_b sc_list)
+                  in add_b sc_list) *)
 
 (* A constrained monitor-set <b,M> symbolically potentially reaches a verdict spr(<b,M>,w) if the monitor set M can immediately reach a verdict without requiring tau transitions *)
 let rec spr (cms: Ast.Expression.t list * Ast.Monitor.t list) (verdict_list: int list): bool =
