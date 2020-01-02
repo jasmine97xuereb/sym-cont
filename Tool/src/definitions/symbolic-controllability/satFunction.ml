@@ -11,6 +11,8 @@ open Z3.Solver
 open Z3.Goal
 open Z3.Tactic
 open Z3.Tactic.ApplyResult
+open VisibilityLevel
+open PrettyPrintm
 
 (** function to convert an list of expressions in the form Ast.Expression.t into the Z3.Expr.expr required by the Z3 library  *)
 let rec exp_list_to_z3 (c: Ast.Expression.t list) (a: Z3.Expr.expr list) (ctx: context) =
@@ -46,6 +48,7 @@ let rec exp_list_to_z3 (c: Ast.Expression.t list) (a: Z3.Expr.expr list) (ctx: c
 
 (* checks whether a list of expressions is satisfiable using tactics *)
 let sat (c: Ast.Expression.t list): bool = 
+  print_all_messages ("\nChecking SAT for " ^ (pretty_print_evt_list c));
   let cfg = [("model", "true")] in 
     let ctx = (mk_context cfg) in
       let cndts = exp_list_to_z3 c [] ctx in
