@@ -14,6 +14,11 @@ open Z3.Tactic.ApplyResult
 open PrettyPrint
 open VisibilityLevel
 
+(*mutable data structure to store the cumulative time for sat calls*)
+let sat_timer = ref 0.0 
+let sat_converting = ref 0.0
+let sat_converting_back = ref 0.0
+
 (** function to convert a list of expressions in the form Ast.Expression.t into the Z3.Expr.expr required by the Z3 library  *)
 let rec exp_list_to_z3 (c: Ast.Expression.t list) (a: Z3.Expr.expr list) (ctx: context) =
   let rec single_exp_to_z3 (e: Ast.Expression.t) (ctx: context) =
@@ -99,17 +104,14 @@ let rec goals_to_exp (goals: Z3.Goal.goal list): Ast.Expression.t =
 (*return (true, [Ast.Expression])*)            
 let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
   (* print_all_messages ("\nChecking SAT for " ^ (pretty_print_evt_list c)); *)
-  (* let p (x: Ast.Expression.t) (identifier: string): bool=
-    (Str.string_match (Str.regexp "[0-9]+==$[a-z0-9]+") (print_evt x) 0)
-  in
-  if List.length (List.filter p c) > 1 
-  then (false, [])
-  else *)
+  
+  let start_time = Sys.time () in
 
   let cfg = [("model", "true")] in 
     let ctx = (mk_context cfg) in
       let cndts = exp_list_to_z3 c [] ctx in
-        
+      sat_converting := !sat_converting +. (Sys.time () -. start_time);
+
         let g = (mk_goal ctx true false false) in
         (Goal.add g [ cndts ]) ;
         (*print_endline("-------------------");
@@ -121,6 +123,8 @@ let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
             (if is_decided_unsat (get_subgoal result 0) 
             then(
               (*print_endline("unsat");*)
+              let finish_time = Sys.time ()
+              in sat_timer := !sat_timer +. (finish_time -. start_time);
               (false, [])
             )
             else( 
@@ -128,10 +132,18 @@ let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
               print_endline("subgoals are: ");
               List.iter (fun x -> print_endline(Goal.to_string x)) (get_subgoals result);  *)
               let subgoals = get_subgoals result
+             
+              in let start_converting = Sys.time ()
               in let resulting_exp = [goals_to_exp subgoals] 
+              in sat_converting_back := !sat_converting_back +. (Sys.time() -. start_converting);
+
               (* in print_endline(pretty_print_evt_list [goals_to_exp subgoals]);
               print_endline("RESULTING:");
               print_endline (pretty_print_evt_list resulting_exp); *)
-              in (true, resulting_exp)
+              
+              let finish_time = Sys.time ()
+              in sat_timer := !sat_timer +. (finish_time -. start_time);
+
+              (true, resulting_exp)
             ));
         )

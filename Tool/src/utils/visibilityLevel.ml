@@ -6,6 +6,7 @@ let default = 0
 let basic = 1 
 let warnings = 2
 let all_messages = 3
+let timing = -1
 
 (*mutable data structure to be used for defining the visibility level of printing*)
 (*the default visibility level is 0 i.e. suppress all output *)
@@ -28,3 +29,5 @@ let print_warnings (message: string) =
 let print_all_messages (message: string) = 
   print all_messages message
 
+let print_timing (message: string) = 
+  print timing message
