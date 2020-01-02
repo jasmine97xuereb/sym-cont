@@ -98,7 +98,9 @@ let rec goals_to_exp (goals: Z3.Goal.goal list): Ast.Expression.t =
   | g::[] -> z3_to_exp [Goal.as_expr g]
   | g::gs -> add_binary_condition (z3_to_exp [Goal.as_expr g]) (goals_to_exp gs) Ast.Expression.BinaryExp.And
 
-
+(* checks if a list of z3 expressions is satisfible using tactics *)
+(* if sat, then return (true, simp) where simp is a list of simplified exps *)
+(* otherwise return (false, []) *)
 let full_sat (cndts: Z3.Expr.expr list) (ctx) (cfg): (bool * Ast.Expression.t list) = 
   let g = (mk_goal ctx true false false) in
   (Goal.add g cndts) ;
@@ -113,11 +115,18 @@ let full_sat (cndts: Z3.Expr.expr list) (ctx) (cfg): (bool * Ast.Expression.t li
     in (true, resulting_exp)
   )
     
-(*check if a list of expressions is satisfiable*)
-(*if it is satisfiable, then there the ctx solver must return at least one subgoal*)
-(*if the subgoal returned is false, then return (false, []) since the list of expressions in unsat*)
-(*otherwise get the list of subgoals and convert them back to AST expressions*)
-(*return (true, [Ast.Expression])*)            
+(* Optimised using batch checking -- checks if a list of expressions is satistiable *)
+(* STEP 1: convert the expressions into a list of z3 expressions *)
+(* STEP 2: if the list is larger than two, then check in batches of 2 *)
+(* STEP 2.1: if the two conditions are unsatisfiable, then return (false, []) *)
+(*           else go back to STEP 2 with the next batch *)
+(* STEP 2.2: check the whole z3 expression list to check if it is satisfiable *)
+(*           if whole expression is sat, then return (true, simp) where simp is the simplified exp *)
+(*           else return (false, []) *)
+(* STEP 3: else go to STEP 2.2 *)
+(* NOTE: full_sat() returns sat or unsat and the resulting simplified exp *)
+(*       inner_sat() simply returns sat or unsat and is only used in batch checking *)
+
 let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
   print_all_messages ("\nChecking SAT for " ^ (pretty_print_evt_list c));
   
