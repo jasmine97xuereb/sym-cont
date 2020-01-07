@@ -150,6 +150,13 @@ let add_unary_condition (ex: Ast.Expression.t) = Ast.Expression.UnaryExp {
   Ast.Expression.UnaryExp.arg = ex;
 }
 
+let add_expression_tree (cond: Ast.Expression.t) (if_true: Ast.Expression.t list) (if_false: Ast.Expression.t list) = 
+  Ast.Expression.ExpressionTree({
+    Ast.Expression.ExpressionTree.cond = cond;
+    Ast.Expression.ExpressionTree.if_true = if_true;
+    Ast.Expression.ExpressionTree.if_false = if_false;
+  })
+
 let rec check_sevt_exists (l: Ast.SymbolicEvent.t list) (sevt: Ast.SymbolicEvent.t): bool = 
   match l with
     | [] -> false
@@ -193,12 +200,6 @@ let rec check_exp_exists (l: Ast.Expression.t list) (evt: Ast.Expression.t): boo
     | _ -> 
       contains (pretty_print_evt_list l) (pretty_print_evt_list [evt]) 
 
-(*let rec check_exp_exists (l: Ast.Expression.t list) (evt: Ast.Expression.t): bool = 
-  print_endline ("checking ");
-  List.map (fun m -> print_expression_string m) l;
-  print_expression_string evt;
-  List.mem evt l *)
-
 let rec check_tvar_exists (l: Ast.TVar.t list) (tvar: Ast.TVar.t): bool =
     match l with 
     | [] -> false
@@ -229,3 +230,25 @@ let rec create_exp(s: string): Ast.Expression.t =
       | x ->  Ast.Expression.Literal(Ast.Literal.Bool(x))
       | exception Invalid_argument _ -> create_exp_identifier s
     )
+
+(*create a list of n consecutive numbers*)
+let rec create_list (n:int): int list =
+  match n with 
+    | 0 -> []
+    | some_n -> some_n :: (create_list (n-1))  
+
+(*takes a lists of lists and a list of expressions*)
+(*adds each list in to_add to condition_list*)
+(*ex. combine [[a,b],[c,d]] [x,y,z] -> [[a,b,x,y,z], [c,d,x,y,z]] *)
+let rec combine (to_add: Ast.Expression.t list list) (condition_list: Ast.Expression.t list): Ast.Expression.t list list =
+  match to_add with 
+  | [] -> [condition_list]
+  | x::[] -> [condition_list @ x]
+  | x::xs -> [condition_list @ x] @ (combine xs condition_list)
+
+(* let rec combine (to_add: Ast.Expression.t list) (condition: Ast.Expression.t): Ast.Expression.t list =
+  let op = Ast.Expression.BinaryExp.And in
+  match to_add with 
+  | [] -> [condition]
+  | x::[] -> [add_binary_condition condition x op]
+  | x::xs -> [add_binary_condition condition x op] @ (combine xs condition) *)
