@@ -66,8 +66,8 @@ let rec rc (ms: Ast.Monitor.t list) (sevt: Ast.SymbolicEvent.t) (cs: Ast.Express
 (* the expression is of the form ExpressionTree since many of the conditions are mutually exclusive *)
 and get_if_conditions (m: Ast.Monitor.Conditional.t) (evt: Ast.SymbolicEvent.t) (c: Ast.Expression.t list): Ast.Expression.t list =
   let a = m.condition in 
-    let b_true = (inner_rc m.if_true evt c) in 
-      let b_false = (inner_rc m.if_false evt c) in
+    let b_true = List.sort_uniq compare (inner_rc m.if_true evt c) in 
+      let b_false = List.sort_uniq compare (inner_rc m.if_false evt c) in
         [add_expression_tree a b_true b_false] @ c
 
   and get_evaluate_conditions (m: Ast.Monitor.Evaluate.t) (evt: Ast.SymbolicEvent.t) (c: Ast.Expression.t list): Ast.Expression.t list =
@@ -113,7 +113,7 @@ let rec check_contains_expression_tree (e: Ast.Expression.t): bool =
 (* example: *)
 (* cart_prod [1; 2] [4; 5] -> [1^4; 1^5; 2^4; 2^5]*)
 (* cart_prod [1; 2; 3] [] -> [] *)
-let cart_prod (l1: Ast.Expression.t list) (l2: Ast.Expression.t list): Ast. =
+let cart_prod (l1: Ast.Expression.t list) (l2: Ast.Expression.t list): Ast.Expression.t list =
   (* print_messages("cartesian product of " ^ pretty_print_evt_list l1 ^ " and " ^ pretty_print_evt_list l2); *)
   let op = Ast.Expression.BinaryExp.And in
   List.fold_left (fun acc1 ele1 ->
