@@ -60,8 +60,8 @@ def AnalyseMonitors(repetition):
   return time_record
 
 def UpToComplexity(complexity):  
-#   results = pd.DataFrame(columns=['Choice','NestedIFs','Recursion'])
-  results = pd.DataFrame(columns=['Choice','Recursion'])
+  results = pd.DataFrame(columns=['Choice','NestedIFs','Recursion'])
+  # results = pd.DataFrame(columns=['Choice','Recursion'])
   # results = pd.DataFrame(columns=['NestedfIFs'])
 
   for i in range (1, complexity+1):
@@ -73,8 +73,8 @@ def UpToComplexity(complexity):
   return results
 
 def ComplexitySteps(complexity):  
-#   results = pd.DataFrame(columns=['Choice','NestedIFs','Recursion'])
-  results = pd.DataFrame(columns=['Choice','Recursion'])
+  results = pd.DataFrame(columns=['Choice','NestedIFs','Recursion'])
+  # results = pd.DataFrame(columns=['Choice','Recursion'])
   # results = pd.DataFrame(columns=['NestedfIFs'])
 
   for i in complexity:
