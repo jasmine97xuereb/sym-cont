@@ -61,7 +61,7 @@ def AnalyseMonitors(repetition):
 
 def UpToComplexity(complexity):  
 #   results = pd.DataFrame(columns=['Choice','NestedIFs','Recursion'])
-#   results = pd.DataFrame(columns=['Choice','Recursion'])
+  # results = pd.DataFrame(columns=['Choice','Recursion'])
   results = pd.DataFrame(columns=['NestedfIFs'])
 
   for i in range (1, complexity+1):
@@ -74,7 +74,7 @@ def UpToComplexity(complexity):
 
 def ComplexitySteps(complexity):  
 #   results = pd.DataFrame(columns=['Choice','NestedIFs','Recursion'])
-#   results = pd.DataFrame(columns=['Choice','Recursion'])
+  # results = pd.DataFrame(columns=['Choice','Recursion'])
   results = pd.DataFrame(columns=['NestedfIFs'])
 
   for i in complexity:
@@ -85,11 +85,11 @@ def ComplexitySteps(complexity):
   results.index += 1 
   return results
 
-def Plot(df):
+# def Plot(df):
 
 
-results = UpToComplexity(1)
+results = UpToComplexity(4)
 # results = ComplexitySteps([1,5,10])
 print(results)
-# results.to_csv("RunningTimes2.csv")
+results.to_csv("RunningTimes.csv")
 # Plot(results)

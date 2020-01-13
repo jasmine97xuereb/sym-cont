@@ -11,7 +11,7 @@ string2="l(x).(if x==4 then k<x>.2 else k<x>.1)"
 string3 = "rec X.(k<1>.(l<1>.X)+(q<1>.1))"
 string4 = "l(x).k<x>."
 
-counter = 6+(2*(nb_choice-1)) 
+# counter = 6+(2*(nb_choice-1)) 
 
 # for i in range(nb_choice-1):
 #     string = string + "+ (recX.k<" + str(i+2) + ">.X)"
@@ -21,7 +21,7 @@ counter = 6+(2*(nb_choice-1))
 # print(string)
 
 for i in range(nb_choice):
-    if i == 0 and nb_choice == 0:
+    if i == 0 and nb_choice == 1:
         string2 = "l(x).if x==4 then k<x>.2 else k<x>.1"
     else:
         temp = "if x mod 2 == 0 then "
