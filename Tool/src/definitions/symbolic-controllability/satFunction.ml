@@ -12,7 +12,7 @@ open Z3.Goal
 open Z3.Tactic
 open Z3.Tactic.ApplyResult
 open VisibilityLevel
-open PrettyPrintm
+open PrettyPrint
 
 (** function to convert an list of expressions in the form Ast.Expression.t into the Z3.Expr.expr required by the Z3 library  *)
 let rec exp_list_to_z3 (c: Ast.Expression.t list) (a: Z3.Expr.expr list) (ctx: context) =
