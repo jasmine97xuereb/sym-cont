@@ -273,16 +273,11 @@ let rec indirect_dependency (b: Ast.Expression.t list) (to_keep: Vars.t): Vars.t
     | b1::bs ->
       (match b1 with 
       | Ast.Expression.BinaryExp(x)->
-      (match x.operator with
-        | Ast.Expression.BinaryExp.And -> 
-          Vars.union (inner_check [x.arg_lt] to_keep) (inner_check [x.arg_rt] to_keep)
-        | _ -> 
           if check_in_list (x.arg_rt) (Vars.elements to_keep)
           then Vars.union (fv ([x.arg_lt],[]) to_keep) (inner_check bs to_keep)
           else if check_in_list (x.arg_lt) (Vars.elements to_keep)
           then Vars.union (fv ([x.arg_rt],[]) to_keep) (inner_check bs to_keep)
           else inner_check bs to_keep
-      )
       | Ast.Expression.UnaryExp(x) -> 
         if check_in_list x.arg (Vars.elements to_keep) (*if there is some var to be kept, then all those vars must also be kept*)
         then Vars.union to_keep (fv ([x.arg], []) Vars.empty)
@@ -321,7 +316,10 @@ let cns (b: Ast.Expression.t list) (mon_list: Ast.Monitor.t list): Ast.Expressio
       (*check if any of those to keep are dependent on any from the ones to be discarded*)
       (* let to_keep = indirect_dependency (List.hd b) to_keep  *)
       let to_keep = indirect_dependency b to_keep 
-      in if Vars.subset to_keep v
+      in 
+      print_endline("Keeping ");
+      List.iter (fun x -> print_endline (print_identifier_string x)) (Vars.elements to_keep);
+      if Vars.subset to_keep v
       then filter_b b (Vars.elements to_keep)
       else b 
     )

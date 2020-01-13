@@ -53,7 +53,7 @@ let sat (c: Ast.Expression.t list): bool  =
         let solver = (mk_solver ctx None) in
           let cndts = exp_list_to_z3 c [] ctx in
             (Solver.add solver [cndts]);
-            (*print_endline(to_string solver);*) 
+            (* print_endline(to_string solver);  *)
             if (check solver []) == SATISFIABLE
             then true
             else false
