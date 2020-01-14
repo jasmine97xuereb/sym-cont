@@ -398,11 +398,11 @@ let isSymControllable (mon: Ast.Monitor.t list) =
                     print_all_messages (pretty_print_evt_list c);
                     
                     sat_timer := 0.0; (*since sat solver is also used in saft*)
-                    let sc_start_time = Sys.time () in 
+                    (* let sc_start_time = Sys.time () in  *)
                     let sat_cond = sc (fst cm) c [] in 
-                      let sc_finish_time = Sys.time () in
-                      print_endline("Total time taken for SC is " ^ string_of_float(sc_finish_time -. sc_start_time));
-                      print_endline("Time taken to from SAT solver is " ^ string_of_float(!sat_timer));
+                      (* let sc_finish_time = Sys.time () in *)
+                      (* print_endline("Total time taken for SC is " ^ string_of_float(sc_finish_time -. sc_start_time)); *)
+                      (* print_endline("Time taken to from SAT solver is " ^ string_of_float(!sat_timer)); *)
                       sat_timer := 0.0;
 
                       print_all_messages ("\nSatisfiability Conditions (SC) " ^ (pretty_print_evt_list sat_cond));

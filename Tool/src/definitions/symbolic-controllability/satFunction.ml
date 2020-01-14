@@ -109,7 +109,7 @@ let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
   then (false, [])
   else *)
   
-  let start_time = Sys.time () in
+  (* let start_time = Sys.time () in *)
 
   let cfg = [("model", "true")] in 
     let ctx = (mk_context cfg) in
@@ -126,8 +126,8 @@ let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
             (if is_decided_unsat (get_subgoal result 0) 
             then(
               (*print_endline("unsat");*)
-              let finish_time = Sys.time ()
-              in sat_timer := !sat_timer +. (finish_time -. start_time);
+              (* let finish_time = Sys.time () *)
+              (* in sat_timer := !sat_timer +. (finish_time -. start_time); *)
 
               (false, [])
             )
@@ -142,8 +142,8 @@ let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
               print_endline (pretty_print_evt_list resulting_exp); *)
               in 
               
-              let finish_time = Sys.time ()
-              in sat_timer := !sat_timer +. (finish_time -. start_time);
+              (* let finish_time = Sys.time () *)
+              (* in sat_timer := !sat_timer +. (finish_time -. start_time); *)
               
               (true, resulting_exp)
             ));

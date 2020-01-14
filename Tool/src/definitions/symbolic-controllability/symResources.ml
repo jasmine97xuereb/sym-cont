@@ -1,6 +1,7 @@
 open EnvFunctions
 open EnvResources
 open ExpressionEvaluator
+open PrettyPrint
 
 (*mutable data structure to be used for generating the next fresh tvariable - used in rename_monvar function*)
 let tvar_counter = ref 0 
@@ -18,6 +19,81 @@ module TVarTypes = struct
   let compare (x:t) (y:t): int = compare x y
 end 
 module BoundTVars = Set.Make(TVarTypes)
+
+(*map that stores mappings from TVars to their respective free variables*)
+let mapTVarFv = ref TVars.empty
+
+(* Function to calculate the set of free variables in a constrained monitor set <b, M>, where fv(<b,M>) = {fv(b)} union {fv(M)} *)
+let rec fv (cms: Ast.Expression.t list * Ast.Monitor.t list) (var_set: Vars.t): Vars.t =
+   Vars.union (fv_exp (fst cms) var_set []) (fv_mon (snd cms) var_set [])
+
+and fv_mon (m_list: Ast.Monitor.t list) (var_set: Vars.t) (tvars_checked: Ast.TVar.t list): Vars.t =
+  match m_list with
+  | [] -> var_set
+  | mon::mons ->
+    (match mon with
+      | Ast.Monitor.Verdict(x) -> fv_mon mons var_set tvars_checked
+      | Ast.Monitor.TVar(x) -> 
+        (*check if the tvar has already been checked, if not check and add to list of checked tvars*)
+        if check_tvar_exists tvars_checked x == false 
+        then fv_mon mons (fv_tvar x var_set ([x] @ tvars_checked)) ([x] @ tvars_checked)
+        else fv_mon mons var_set tvars_checked 
+      | Ast.Monitor.Choice(x) -> fv_mon mons (Vars.union (fv_mon [x.right] var_set tvars_checked) (fv_mon [x.left] var_set tvars_checked)) tvars_checked
+      | Ast.Monitor.ExpressionGuard(x) -> fv_mon mons (fv_eg x var_set tvars_checked) tvars_checked
+      | Ast.Monitor.QuantifiedGuard(x) -> fv_mon mons (fv_qg x var_set tvars_checked) tvars_checked
+      | Ast.Monitor.Conditional(x) -> fv_mon mons (fv_if x var_set tvars_checked) tvars_checked 
+      | Ast.Monitor.Evaluate(x) -> fv_mon mons (fv_let x var_set tvars_checked) tvars_checked
+      | Ast.Monitor.Recurse(x) -> fv_mon mons (fv_mon [x.consume] var_set tvars_checked) tvars_checked)
+
+and fv_expression (expr: Ast.Expression.t) (var_set: Vars.t): Vars.t = 
+  match expr with 
+  | Ast.Expression.Identifier(x) -> Vars.add x var_set
+  | Ast.Expression.BinaryExp(x) -> Vars.union (fv_expression x.arg_lt var_set) (fv_expression x.arg_rt var_set)
+  | _ -> var_set
+
+and fv_tvar (tvar: Ast.TVar.t) (var_set: Vars.t) (tvars_checked: Ast.TVar.t list): Vars.t = 
+  match TVars.find_opt tvar.tvar !mapTVar with
+  | Some m -> 
+    (match TVars.find_opt tvar.tvar !mapTVarFv with 
+    | Some n -> n
+    | None -> var_set 
+    )
+  | None -> var_set
+    (* | Some m -> fv_mon [m] var_set tvars_checked
+    | None -> var_set *)
+
+and fv_eg (mon: Ast.Monitor.ExpressionGuard.t) (var_set: Vars.t) (tvars_checked: Ast.TVar.t list): Vars.t =
+  match mon.payload with
+    | Ast.Expression.Identifier(x) -> fv_mon [mon.consume] (Vars.add x var_set) tvars_checked
+    | Ast.Expression.BinaryExp(x) -> fv_mon [mon.consume] (fv_expression mon.payload var_set) tvars_checked
+    | _ -> fv_mon [mon.consume] var_set tvars_checked
+
+and fv_qg (mon: Ast.Monitor.QuantifiedGuard.t) (var_set: Vars.t) (tvars_checked: Ast.TVar.t list): Vars.t =
+  match mon.payload with
+    | Ast.Expression.Identifier(x) -> Vars.remove x (fv_mon [mon.consume] var_set tvars_checked) (*(Vars.add x var_set)*)
+    | _ -> fv_mon [mon.consume] var_set tvars_checked
+
+and fv_if (mon: Ast.Monitor.Conditional.t) (var_set: Vars.t) (tvars_checked: Ast.TVar.t list): Vars.t =
+  let condition_vars = fv_exp [mon.condition] var_set tvars_checked in
+    Vars.union (Vars.union (fv_mon [mon.if_true] var_set tvars_checked) (fv_mon [mon.if_false] var_set tvars_checked)) condition_vars
+
+and fv_let (mon: Ast.Monitor.Evaluate.t) (var_set: Vars.t) (tvars_checked: Ast.TVar.t list): Vars.t =
+  match mon.var with
+    | Ast.Expression.Identifier(x) -> (
+      if Vars.mem x var_set
+      then (Vars.remove x (Vars.union (fv_exp [mon.subst] var_set tvars_checked) (fv_mon [mon.stmt] var_set tvars_checked)))
+      else (Vars.remove x (Vars.union (fv_exp [mon.subst] var_set tvars_checked) (fv_mon [mon.stmt] var_set tvars_checked))))
+    | _ -> var_set
+
+and fv_exp (e_list: Ast.Expression.t list) (var_set: Vars.t) (tvars_checked: Ast.TVar.t list): Vars.t =
+  match e_list with
+    | [] -> var_set
+    | exp::exps ->
+      (match exp with
+        | Ast.Expression.Identifier(x) -> fv_exp exps (Vars.add x var_set) tvars_checked
+        | Ast.Expression.Literal(x) -> fv_exp exps var_set tvars_checked
+        | Ast.Expression.BinaryExp(x) -> fv_exp exps (Vars.union (fv_exp [x.arg_rt] var_set tvars_checked) (fv_exp [x.arg_lt] var_set tvars_checked)) tvars_checked
+        | Ast.Expression.UnaryExp(x) -> fv_exp exps (fv_exp [x.arg] var_set tvars_checked) tvars_checked)
 
 (*function to calculate the set of bound tvariables in a monitor list*)
 let rec btv (cms: Ast.Monitor.t list) (bound_set: BoundTVars.t): BoundTVars.t = 
@@ -54,80 +130,20 @@ let rec rename_monvar (m: Ast.Monitor.t) (bound: BoundTVars.t): Ast.Monitor.t =
   | Ast.Monitor.Recurse(x) -> 
     if BoundTVars.mem x.monvar bound
     then
+      (*if it already bound, create a fresh tvar *)
+      (*add the map from the current tvar to its set of free variables*)
       (let new_tvar = fresh_tvar !tvar_counter in
-        incr tvar_counter; 
-        create_recurse_mon new_tvar (rename_monvar (substitute_tvar x.consume x.monvar new_tvar) (BoundTVars.add new_tvar bound))
+      let free_vars = fv ([], [x.consume]) Vars.empty
+      in mapTVarFv := TVars.add (print_tvar_string new_tvar) free_vars !mapTVarFv;
+      incr tvar_counter; 
+      create_recurse_mon new_tvar (rename_monvar (substitute_tvar x.consume x.monvar new_tvar) (BoundTVars.add new_tvar bound))
       )
-    else
-      create_recurse_mon x.monvar (rename_monvar x.consume (BoundTVars.add x.monvar bound))
+    else(
+      (*add the map from the current tvar to its set of free variables*)
+      let free_vars = fv ([], [x.consume]) Vars.empty
+      in mapTVarFv := TVars.add x.monvar.tvar free_vars !mapTVarFv;
+      create_recurse_mon x.monvar (rename_monvar x.consume (BoundTVars.add x.monvar bound)))
   | _ -> m
-
-(* Function to calculate the set of free variables in a constrained monitor set <b, M>, where fv(<b,M>) = {fv(b)} union {fv(M)} *)
-let rec fv (cms: Ast.Expression.t list * Ast.Monitor.t list) (var_set: Vars.t): Vars.t =
-   Vars.union (fv_exp (fst cms) var_set []) (fv_mon (snd cms) var_set [])
-
-and fv_mon (m_list: Ast.Monitor.t list) (var_set: Vars.t) (tvars_checked: Ast.TVar.t list): Vars.t =
-  match m_list with
-  | [] -> var_set
-  | mon::mons ->
-    (match mon with
-      | Ast.Monitor.Verdict(x) -> fv_mon mons var_set tvars_checked
-      | Ast.Monitor.TVar(x) -> 
-        (*check if the tvar has already been checked, if not check and add to list of checked tvars*)
-        if check_tvar_exists tvars_checked x == false 
-        then fv_mon mons (fv_tvar x var_set ([x] @ tvars_checked)) ([x] @ tvars_checked)
-        else fv_mon mons var_set tvars_checked 
-      | Ast.Monitor.Choice(x) -> fv_mon mons (Vars.union (fv_mon [x.right] var_set tvars_checked) (fv_mon [x.left] var_set tvars_checked)) tvars_checked
-      | Ast.Monitor.ExpressionGuard(x) -> fv_mon mons (fv_eg x var_set tvars_checked) tvars_checked
-      | Ast.Monitor.QuantifiedGuard(x) -> fv_mon mons (fv_qg x var_set tvars_checked) tvars_checked
-      | Ast.Monitor.Conditional(x) -> fv_mon mons (fv_if x var_set tvars_checked) tvars_checked 
-      | Ast.Monitor.Evaluate(x) -> fv_mon mons (fv_let x var_set tvars_checked) tvars_checked
-      | Ast.Monitor.Recurse(x) -> fv_mon mons (fv_mon [x.consume] var_set tvars_checked) tvars_checked)
-
-and fv_expression (expr: Ast.Expression.t) (var_set: Vars.t): Vars.t = 
-  match expr with 
-  | Ast.Expression.Identifier(x) -> Vars.add x var_set
-  | Ast.Expression.BinaryExp(x) -> Vars.union (fv_expression x.arg_lt var_set) (fv_expression x.arg_rt var_set)
-  | _ -> var_set
-
-and fv_tvar (tvar: Ast.TVar.t) (var_set: Vars.t) (tvars_checked: Ast.TVar.t list): Vars.t = 
-  match TVars.find_opt tvar.tvar !mapTVar with
-    | Some m -> fv_mon [m] var_set tvars_checked
-    | None -> var_set
-
-and fv_eg (mon: Ast.Monitor.ExpressionGuard.t) (var_set: Vars.t) (tvars_checked: Ast.TVar.t list): Vars.t =
-  match mon.payload with
-    | Ast.Expression.Identifier(x) -> fv_mon [mon.consume] (Vars.add x var_set) tvars_checked
-    | Ast.Expression.BinaryExp(x) -> fv_mon [mon.consume] (fv_expression mon.payload var_set) tvars_checked
-    | _ -> fv_mon [mon.consume] var_set tvars_checked
-
-and fv_qg (mon: Ast.Monitor.QuantifiedGuard.t) (var_set: Vars.t) (tvars_checked: Ast.TVar.t list): Vars.t =
-  match mon.payload with
-    | Ast.Expression.Identifier(x) -> Vars.remove x (fv_mon [mon.consume] var_set tvars_checked) (*(Vars.add x var_set)*)
-    | _ -> fv_mon [mon.consume] var_set tvars_checked
-
-and fv_if (mon: Ast.Monitor.Conditional.t) (var_set: Vars.t) (tvars_checked: Ast.TVar.t list): Vars.t =
-  let condition_vars = fv_exp [mon.condition] var_set tvars_checked in
-    Vars.union (Vars.union (fv_mon [mon.if_true] var_set tvars_checked) (fv_mon [mon.if_false] var_set tvars_checked)) condition_vars
-
-and fv_let (mon: Ast.Monitor.Evaluate.t) (var_set: Vars.t) (tvars_checked: Ast.TVar.t list): Vars.t =
-  match mon.var with
-    | Ast.Expression.Identifier(x) -> (
-      if Vars.mem x var_set
-      then (Vars.remove x (Vars.union (fv_exp [mon.subst] var_set tvars_checked) (fv_mon [mon.stmt] var_set tvars_checked)))
-      else (Vars.remove x (Vars.union (fv_exp [mon.subst] var_set tvars_checked) (fv_mon [mon.stmt] var_set tvars_checked))))
-    | _ -> var_set
-
-and fv_exp (e_list: Ast.Expression.t list) (var_set: Vars.t) (tvars_checked: Ast.TVar.t list): Vars.t =
-  match e_list with
-    | [] -> var_set
-    | exp::exps ->
-      (match exp with
-        | Ast.Expression.Identifier(x) -> fv_exp exps (Vars.add x var_set) tvars_checked
-        | Ast.Expression.Literal(x) -> fv_exp exps var_set tvars_checked
-        | Ast.Expression.BinaryExp(x) -> fv_exp exps (Vars.union (fv_exp [x.arg_rt] var_set tvars_checked) (fv_exp [x.arg_lt] var_set tvars_checked)) tvars_checked
-        | Ast.Expression.UnaryExp(x) -> fv_exp exps (fv_exp [x.arg] var_set tvars_checked) tvars_checked)
-
 
 (* frsh(fv(<b,M>)) deterministically returns the next fresh variable that is not in the variable set.
 For the purpose of this task, we denote any fresh variables generated by a '$' and a counter as we go along.*)
