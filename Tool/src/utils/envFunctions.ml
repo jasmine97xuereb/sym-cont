@@ -207,10 +207,10 @@ let check_comparison (e: Ast.Expression.t): bool =
   match e with
   | Ast.Expression.BinaryExp(x) ->
     (match x.arg_lt, x.operator, x.arg_rt with
-    | Ast.Expression.Identifier(x), Compare, Ast.Expression.Identifier(y) -> true
+    (* | Ast.Expression.Identifier(x), Compare, Ast.Expression.Identifier(y) -> true *)
     | Ast.Expression.Literal(x), Compare, Ast.Expression.Identifier(y) -> true
     | Ast.Expression.Identifier(x), Compare, Ast.Expression.Literal(y) -> true
-    | Ast.Expression.Literal(x), Compare, Ast.Expression.Literal(y) -> true
+    (* | Ast.Expression.Literal(x), Compare, Ast.Expression.Literal(y) -> true *)
     | _ -> false)
   | _ -> false
 
