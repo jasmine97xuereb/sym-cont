@@ -33,7 +33,7 @@
 *.bbl
 *.lof
 *.lot
-*.pdf
+# *.pdf
 *.toc
 *.txss
 *.nav
