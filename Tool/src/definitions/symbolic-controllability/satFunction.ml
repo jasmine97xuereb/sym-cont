@@ -105,12 +105,12 @@ let rec goals_to_exp (goals: Z3.Goal.goal list): Ast.Expression.t =
 let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
   (* print_all_messages ("\nChecking SAT for " ^ (pretty_print_evt_list c)); *)
   
-  let start_time = Sys.time () in
+  (* let start_time = Sys.time () in *)
 
   let cfg = [("model", "true")] in 
     let ctx = (mk_context cfg) in
       let cndts = exp_list_to_z3 c [] ctx in
-      sat_converting := !sat_converting +. (Sys.time () -. start_time);
+      (* sat_converting := !sat_converting +. (Sys.time () -. start_time); *)
 
         let g = (mk_goal ctx true false false) in
         (Goal.add g [ cndts ]) ;
@@ -123,8 +123,8 @@ let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
             (if is_decided_unsat (get_subgoal result 0) 
             then(
               (*print_endline("unsat");*)
-              let finish_time = Sys.time ()
-              in sat_timer := !sat_timer +. (finish_time -. start_time);
+              (* let finish_time = Sys.time () *)
+              (* in sat_timer := !sat_timer +. (finish_time -. start_time); *)
               (false, [])
             )
             else( 
@@ -133,17 +133,17 @@ let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
               List.iter (fun x -> print_endline(Goal.to_string x)) (get_subgoals result);  *)
               let subgoals = get_subgoals result
              
-              in let start_converting = Sys.time ()
+              (* in let start_converting = Sys.time () *)
               in let resulting_exp = [goals_to_exp subgoals] 
-              in sat_converting_back := !sat_converting_back +. (Sys.time() -. start_converting);
+              (* in sat_converting_back := !sat_converting_back +. (Sys.time() -. start_converting); *)
 
               (* in print_endline(pretty_print_evt_list [goals_to_exp subgoals]);
               print_endline("RESULTING:");
               print_endline (pretty_print_evt_list resulting_exp); *)
               
-              let finish_time = Sys.time ()
-              in sat_timer := !sat_timer +. (finish_time -. start_time);
+              (* let finish_time = Sys.time () *)
+              (* in sat_timer := !sat_timer +. (finish_time -. start_time); *)
 
-              (true, resulting_exp)
+              in (true, resulting_exp)
             ));
         )
