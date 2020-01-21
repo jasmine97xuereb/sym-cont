@@ -62,7 +62,7 @@ def AnalyseMonitors(repetition):
 def UpToComplexity(complexity):  
 #   results = pd.DataFrame(columns=['Choice','NestedIFs','Recursion'])
 #   results = pd.DataFrame(columns=['Choice','Recursion'])
-  results = pd.DataFrame(columns=['NestedfIFs'])
+  results = pd.DataFrame(columns=['Recursion'])
 
   for i in range (1, complexity+1):
     print("For complexity ", i)
@@ -74,8 +74,8 @@ def UpToComplexity(complexity):
 
 def ComplexitySteps(complexity):  
 #   results = pd.DataFrame(columns=['Choice','NestedIFs','Recursion'])
-#   results = pd.DataFrame(columns=['Choice','Recursion'])
-  results = pd.DataFrame(columns=['NestedfIFs'])
+  results = pd.DataFrame(columns=['Recursion'])
+  # results = pd.DataFrame(columns=['NestedfIFs'])
 
   for i in complexity:
     print("For complexity ", i)
@@ -85,59 +85,8 @@ def ComplexitySteps(complexity):
   results.index += 1 
   return results
 
-def Plot(df):
-#   for column_name in df.columns
-#   plt.scatter(df.Choice, df.NestedIFs, df.Recursion)
-#   plt.show()
-#   plt.savefig('test.png')
-
-#   ax = df.plot(kind='line', subplots=True)  
-#   ax2 = df['NestedIFs'].plot(kind='line')    
-#   ax3 = df['Recursion'].plot(kind='line')    
-
-#   ax1 = df.plot(kind='line', y='Choice', use_index=True, marker='o', color='g')    
-#   ax2 = df.plot(kind='line', y='NestedIFs', use_index=True, marker='o', color='r')    
-#   ax3 = df.plot(kind='line', y='Recursion', use_index=True, marker='o', color='b')
-
-#   ax1.set_title("Choice Monitors")
-#   ax1.set_xlabel("Complexity")
-#   ax1.set_ylabel("Time")
-#   ax2.set_title("Nested IFs Monitors")
-#   ax2.set_xlabel("Complexity")
-#   ax2.set_ylabel("Time")
-#   ax3.set_title("Recursion Monitors")
-#   ax3.set_xlabel("Complexity")
-#   ax3.set_ylabel("Time")
-#   plt.show()
-#   ax3.savefig("NestedIFS_basic.png")
-
-#   fig = plt.figure()
-#   ax = fig.add_subplot(221)
-#   plt.plot(df.index, df.Choice, marker='o', color='g')
-
-#   ax = fig.add_subplot(222)
-#   plt.plot(df.index, df.Recursion, marker='o', color='b')
-
-#   plt.show()
-
-  plt.figure()
-  df.plot(kind='line', y='Choice', use_index=True, marker='o', color='g') 
-  plt.legend('')  
-  plt.title("Choice Monitors")
-  plt.xlabel("Complexity")
-  plt.ylabel("Time")
-  plt.savefig("choice_base.png")
-
-  plt.figure()
-  df.plot(kind='line', y='Recursion', use_index=True, marker='o', color='g') 
-  plt.legend('')  
-  plt.title("Recursion Monitors")
-  plt.xlabel("Complexity")
-  plt.ylabel("Time")
-  plt.savefig("recursion_base.png")
-
-results = UpToComplexity(1)
+results = UpToComplexity(15)
 # results = ComplexitySteps([1,5,10])
 print(results)
-# results.to_csv("RunningTimes2.csv")
+results.to_csv("RunningTimes2.csv")
 # Plot(results)
