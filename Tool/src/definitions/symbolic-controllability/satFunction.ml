@@ -130,7 +130,7 @@ let full_sat (cndts: Z3.Expr.expr list) (ctx) (cfg): (bool * Ast.Expression.t li
 let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
   print_all_messages ("\nChecking SAT for " ^ (pretty_print_evt_list c));
   
-  let start_time = Sys.time () in
+  (* let start_time = Sys.time () in *)
   let cfg = [("model", "true")] in 
   let ctx = (mk_context cfg) in
   let cndts = exp_list_to_z3 c [] ctx in
@@ -150,8 +150,8 @@ let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
       | [] -> 
         print_all_messages("checking final");
         let final_res = full_sat cndts ctx cfg  (*check whole exp list*)
-        in sat_timer := !sat_timer +. (Sys.time () -. start_time);
-        if fst final_res
+        (* in sat_timer := !sat_timer +. (Sys.time () -. start_time); *)
+        in if fst final_res
         then (
           print_all_messages("SAT!!");
           final_res
@@ -164,7 +164,7 @@ let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
         if inner_sat [c]
         then batch_sat []
         else (
-          sat_timer := !sat_timer +. (Sys.time () -. start_time);
+          (* sat_timer := !sat_timer +. (Sys.time () -. start_time); *)
           print_all_messages("Immediately not sat!!");
           (false, []) 
         )
@@ -175,7 +175,7 @@ let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
           batch_sat cs)
         else (
           print_all_messages("Immediately not sat!!");
-          sat_timer := !sat_timer +. (Sys.time () -. start_time);
+          (* sat_timer := !sat_timer +. (Sys.time () -. start_time); *)
           (false, []) 
         )
 
@@ -183,7 +183,7 @@ let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
     if List.length c <= 2 
     then (
       print_all_messages("Length 2 or smaller"); 
-      sat_timer := !sat_timer +. (Sys.time () -. start_time);
+      (* sat_timer := !sat_timer +. (Sys.time () -. start_time); *)
       full_sat cndts ctx cfg
     )
     else 

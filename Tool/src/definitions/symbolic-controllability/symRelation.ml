@@ -96,7 +96,7 @@ let rec rc (ms: Ast.Monitor.t list) (sevt: Ast.SymbolicEvent.t) (cs: Ast.Express
     | mon::mons -> ((inner_rc mon sevt cs) @ (rc mons sevt cs))
 
 let rec combnk k lst =
-  print_endline("choose "^string_of_int(k));
+  (* print_endline("choose "^string_of_int(k)); *)
   let rec inner result k lst =
     match k with
     | 0 -> [[]]
@@ -424,17 +424,17 @@ let isSymControllable (mon: Ast.Monitor.t list) =
                   let c = List.sort_uniq compare (rc (snd cm) s []) in (
                     print_all_messages (pretty_print_evt_list c);
                     
-                    sat_timer := 0.0; (*since sat solver is also used in saft*)
-                    let sc_start_time = Sys.time () in 
+                    (* sat_timer := 0.0; since sat solver is also used in saft *)
+                    (* let sc_start_time = Sys.time () in  *)
                     let sat_cond = sc (fst cm) c [] in 
-                    let sc_finish_time = Sys.time () in
-                    print_timing("Total time taken for SC is " ^ string_of_float(sc_finish_time -. sc_start_time));
-                    print_timing("Time taken to from SAT solver is " ^ string_of_float(!sat_timer));
-                    print_timing("Time taken to from SAT solver to convert " ^ string_of_float(!sat_converting));
-                    print_timing("Time taken to from SAT solver to convert back " ^ string_of_float(!sat_converting_back));
-                    sat_timer := 0.0;
-                    sat_converting := 0.0;
-                    sat_converting_back := 0.0;
+                    (* let sc_finish_time = Sys.time () in *)
+                    (* print_timing("Total time taken for SC is " ^ string_of_float(sc_finish_time -. sc_start_time)); *)
+                    (* print_timing("Time taken to from SAT solver is " ^ string_of_float(!sat_timer)); *)
+                    (* print_timing("Time taken to from SAT solver to convert " ^ string_of_float(!sat_converting)); *)
+                    (* print_timing("Time taken to from SAT solver to convert back " ^ string_of_float(!sat_converting_back)); *)
+                    (* sat_timer := 0.0; *)
+                    (* sat_converting := 0.0; *)
+                    (* sat_converting_back := 0.0; *)
 
                     (* let sat_cond = sc (fst cm) c [] in  *)
                       print_all_messages ("\nSatisfiability Conditions (SC) " ^ (pretty_print_evt_list sat_cond));
