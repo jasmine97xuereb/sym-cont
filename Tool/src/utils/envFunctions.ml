@@ -1,5 +1,6 @@
 open EnvResources
 open PrettyPrint
+open VisibilityLevel
 
 (*let tvar_counter = ref 0 *)(*counter used to generate fresh tvars*)
 
@@ -158,25 +159,6 @@ let rec check_sevt_exists (l: Ast.SymbolicEvent.t list) (sevt: Ast.SymbolicEvent
         then true
       else check_sevt_exists ls sevt
 
-(*
-let rec check_sevt_exists (l: Ast.SymbolicEvent.t list) (sevt: Ast.SymbolicEvent.t): bool = 
-  match l with
-    | [] -> false
-    | l::ls -> 
-      match l with
-      | Ast.SymbolicEvent.SymbolicEvent(x) ->
-        (match sevt with 
-        | Ast.SymbolicEvent.SymbolicEvent(s) ->
-          if((String.compare s.label.name x.label.name == 0) && (String.compare s.payload.name x.payload.name == 0))
-          then true
-          else check_sevt_exists ls sevt
-        | Ast.SymbolicEvent.Any -> check_sevt_exists ls sevt )       
-      | Ast.SymbolicEvent.Any -> 
-        (match sevt with 
-        | Ast.SymbolicEvent.Any -> true 
-        | Ast.SymbolicEvent.SymbolicEvent(x) -> check_sevt_exists ls sevt )
-*)
-
 (*checks if s2 is a substring of s1*)
 let contains s1 s2 =
   try
@@ -193,12 +175,6 @@ let rec check_exp_exists (l: Ast.Expression.t list) (evt: Ast.Expression.t): boo
     | _ -> 
       contains (pretty_print_evt_list l) (pretty_print_evt_list [evt]) 
 
-(*let rec check_exp_exists (l: Ast.Expression.t list) (evt: Ast.Expression.t): bool = 
-  print_endline ("checking ");
-  List.map (fun m -> print_expression_string m) l;
-  print_expression_string evt;
-  List.mem evt l *)
-
 let rec check_tvar_exists (l: Ast.TVar.t list) (tvar: Ast.TVar.t): bool =
     match l with 
     | [] -> false
@@ -206,15 +182,6 @@ let rec check_tvar_exists (l: Ast.TVar.t list) (tvar: Ast.TVar.t): bool =
       if x.tvar == tvar.tvar 
       then true
       else check_tvar_exists xs tvar
-
-(*adds unique elements only to new_list and concatenates it with existing list mon_list*)
-(* let rec add_monitors_not_in_list (mon_list) (to_check) (new_list) =
-  match to_check with 
-  | [] -> mon_list @ new_list
-  | y::z -> 
-    if mon_exists new_list y 
-    then add_monitors_not_in_list mon_list z (new_list) 
-    else add_monitors_not_in_list mon_list z (new_list @ [y]) *)
 
 (*adds unique elements only to new_list and concatenates it with existing list mon_list*)
 let rec add_monitors_not_in_list (mon_list: Ast.Monitor.t list) (to_check: Ast.Monitor.t list): Ast.Monitor.t list =
@@ -229,3 +196,81 @@ let rec create_exp(s: string): Ast.Expression.t =
       | x ->  Ast.Expression.Literal(Ast.Literal.Bool(x))
       | exception Invalid_argument _ -> create_exp_identifier s
     )
+
+(*check if the tuple is already in the relation, if not add it*)
+let rec add_to_relation (relation: (Ast.Expression.t list * Ast.Monitor.t list) list) (to_add: (Ast.Expression.t list * Ast.Monitor.t list)): (Ast.Expression.t list * Ast.Monitor.t list) list =
+  print_all_messages ("adding " ^ (pretty_print_monitor_list_string (snd to_add)));
+  if not (tuple_exists_in_relation to_add relation)
+  then (
+    print_all_messages ("not there"); 
+    [to_add] @ relation)
+  else (
+    print_all_messages ("there"); 
+    relation)
+
+let rec combnk k lst =
+  print_all_messages("choose "^string_of_int(k));
+  let rec inner result k lst =
+    match k with
+    | 0 -> [[]]
+    | _ ->
+      match lst with
+      | []      -> result
+      | x :: xs ->
+        let rec innermost result f = function
+          | []      -> result
+          | x :: xs -> innermost ((f x) :: result) f xs
+        in
+          let new_result = innermost result (fun z -> x :: z) (inner [] (k - 1) xs)
+          in
+            inner new_result k xs
+    in inner [] k lst  
+
+(*get the next tuple that is not already in relation*)
+let rec get_next_unseen (relation: (Ast.Expression.t list * Ast.Monitor.t list) list) (queue: (Ast.Expression.t list * Ast.Monitor.t list) Queue.t): (Ast.Expression.t list * Ast.Monitor.t list) = 
+  if (Queue.is_empty queue) 
+  then ([],[]) 
+  else(
+    let next_m = Queue.pop queue in
+      if tuple_exists_in_relation next_m relation 
+      then (
+        print_all_messages ("it already exists in the relation");
+        get_next_unseen relation queue
+      )
+      else (
+        print_all_messages ("it does not exist");
+        next_m
+      )    
+  ) 
+
+let rec contains_visible_verdicts (mon_list: Ast.Monitor.t list): bool = 
+  let rec inner_check (mon: Ast.Monitor.t): bool = 
+    (match mon with 
+    | Ast.Monitor.TVar(x) -> false
+    | Ast.Monitor.Verdict(x) -> 
+      (match x.verd with
+      | ONE -> true
+      | TWO -> true
+      | _ -> false
+      )
+    | Ast.Monitor.ExpressionGuard(x) -> inner_check x.consume
+    | Ast.Monitor.QuantifiedGuard(x) -> inner_check x.consume
+    | Ast.Monitor.Choice(x) -> 
+      if not (inner_check x.left)
+      then inner_check x.right
+      else false
+    | Ast.Monitor.Conditional(x) -> 
+      if not (inner_check x.if_true)
+      then inner_check x.if_false 
+      else false
+    | Ast.Monitor.Evaluate(x) -> inner_check x.stmt
+    | Ast.Monitor.Recurse(x) -> inner_check x.consume
+    )
+
+    in match mon_list with 
+    | [] -> false
+    | m::ms -> 
+      if (inner_check m)
+      then true
+      else contains_visible_verdicts ms
+
