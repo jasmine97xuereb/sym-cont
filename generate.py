@@ -21,7 +21,7 @@ string4 = "l(x).k<x>."
 # print(string)
 
 if nb_choice == 1:
-  string2 = "l(x).if x==4 then k<x>.2 else k<x>.1"
+  string2 = "l(x).if x==4 then k<x>.k<x>.2 else k<x>.k<x>.1"
 else:
   for i in range(nb_choice-1):
     temp = "if x mod 2 == 0 then "
@@ -29,10 +29,10 @@ else:
     for x in range(i+1):
         temp = temp + "if x<" + str(counter) + " then " 
         counter -= 2
-    temp = temp + "if x>2 then k<x>.2 else k<x>.1"
+    temp = temp + "if x>2 then k<x>.k<x>.2 else k<x>.k<x>.1"
     for x in range(i+1):
-        temp = temp + " else k<x>.1"
-    temp = temp+" else k<x>.1"
+        temp = temp + " else k<x>.k<x>.1"
+    temp = temp+" else k<x>.k<x>.1"
     string2 = string2 + " + ("+temp+")"
 
 print(string2) 
