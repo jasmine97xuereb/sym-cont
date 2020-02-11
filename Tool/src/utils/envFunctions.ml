@@ -209,15 +209,6 @@ let rec check_tvar_exists (l: Ast.TVar.t list) (tvar: Ast.TVar.t): bool =
       else check_tvar_exists xs tvar
 
 (*adds unique elements only to new_list and concatenates it with existing list mon_list*)
-(* let rec add_monitors_not_in_list (mon_list) (to_check) (new_list) =
-  match to_check with 
-  | [] -> mon_list @ new_list
-  | y::z -> 
-    if mon_exists new_list y 
-    then add_monitors_not_in_list mon_list z (new_list) 
-    else add_monitors_not_in_list mon_list z (new_list @ [y]) *)
-
-(*adds unique elements only to new_list and concatenates it with existing list mon_list*)
 let rec add_monitors_not_in_list (mon_list: Ast.Monitor.t list) (to_check: Ast.Monitor.t list): Ast.Monitor.t list =
   List.sort_uniq compare (mon_list @ to_check)
 
@@ -246,9 +237,30 @@ let rec combine (to_add: Ast.Expression.t list list) (condition_list: Ast.Expres
   | x::[] -> [condition_list @ x]
   | x::xs -> [condition_list @ x] @ (combine xs condition_list)
 
-(* let rec combine (to_add: Ast.Expression.t list) (condition: Ast.Expression.t): Ast.Expression.t list =
-  let op = Ast.Expression.BinaryExp.And in
-  match to_add with 
-  | [] -> [condition]
-  | x::[] -> [add_binary_condition condition x op]
-  | x::xs -> [add_binary_condition condition x op] @ (combine xs condition) *)
+(*similar to combine function but takes as parameter two lists of lists*)
+let rec combine_ll (to_add: Ast.Expression.t list list) (condition_list: Ast.Expression.t list list): Ast.Expression.t list list =
+  match condition_list with 
+  | [] -> []
+  | x::[] -> combine to_add x
+  | x::xs -> (combine to_add x) @ (combine_ll to_add xs)
+
+(*predicate function that takes an Ast Expressions and returns a boolean value*)
+(*if e is a binary expression with an Equal operator, return true, else return false*)
+let check_comparison (e: Ast.Expression.t): bool = 
+  match e with
+  | Ast.Expression.BinaryExp(x) ->
+    (match x.arg_lt, x.operator, x.arg_rt with
+    | Ast.Expression.Literal(x), Compare, Ast.Expression.Identifier(y) -> true
+    | Ast.Expression.Identifier(x), Compare, Ast.Expression.Literal(y) -> true
+    | _ -> false)
+  | _ -> false
+
+(*predicate function that takes an Ast Expressions and returns a boolean value*)
+(*if e is a an expression tree or contains an expression tree, return true, else return false*)
+let rec check_contains_expression_tree (e: Ast.Expression.t): bool = 
+  match e with 
+  | Ast.Expression.BinaryExp(x) ->
+    check_contains_expression_tree x.arg_lt && check_contains_expression_tree x.arg_rt
+  | Ast.Expression.UnaryExp(x) -> check_contains_expression_tree x.arg
+  | Ast.Expression.ExpressionTree(x) -> true 
+  | _ -> false

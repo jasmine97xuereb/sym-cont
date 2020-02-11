@@ -99,16 +99,6 @@ let rec combnk k lst =
             inner new_result k xs
     in inner [] k lst  
 
-(*predicate function that takes an Ast Expressions and returns a boolean value*)
-(*if e is a an expression tree or contains an expression tree, return true, else return false*)
-let rec check_contains_expression_tree (e: Ast.Expression.t): bool = 
-  match e with 
-  | Ast.Expression.BinaryExp(x) ->
-    check_contains_expression_tree x.arg_lt && check_contains_expression_tree x.arg_rt
-  | Ast.Expression.UnaryExp(x) -> check_contains_expression_tree x.arg
-  | Ast.Expression.ExpressionTree(x) -> true 
-  | _ -> false
-
 (* computes the cartesian product of two lists using nested folds *)
 (* example: *)
 (* cart_prod [1; 2] [4; 5] -> [1^4; 1^5; 2^4; 2^5]*)
@@ -118,39 +108,7 @@ let cart_prod (l1: Ast.Expression.t list) (l2: Ast.Expression.t list): Ast.Expre
   let op = Ast.Expression.BinaryExp.And in
   List.fold_left (fun acc1 ele1 ->
     List.fold_left (fun acc2 ele2 -> (add_binary_condition ele1 ele2 op)::acc2) acc1 l2) [] l1 ;;
-
-(* 
-let rec traverse_expression_tree (e: Ast.Expression.t): Ast.Expression.t list =
-  match e with 
-  | Ast.Expression.ExpressionTree(x) ->
-    let op = Ast.Expression.BinaryExp.And
-    in let if_true = (List.map (fun y -> traverse_expression_tree y) x.if_true)
-    in let if_false = (List.map (fun y -> traverse_expression_tree y) x.if_false)
-    in let rec concat_all (cond: Ast.Expression.t) (paths: Ast.Expression.t list) = 
-      (match paths with
-      | [] -> []
-      | p::ps -> [add_binary_condition cond p op] @ concat_all cond ps)
-      in 
-      if (List.length if_true > 1) 
-        then 
-          (* let if_true = concat_all x.cond (cart_prod (List.hd if_true) (List.nth if_true 1)) in  *)
-          let rec final_cart_prod (to_add: Ast.Expression.t list list): Ast.Expression.t list = 
-            (match to_add with 
-            | [] -> []
-            | x::[] -> x
-            | x::xs -> cart_prod x (final_cart_prod xs))
-          in let if_true = concat_all x.cond (final_cart_prod if_true) in
-
-          if List.length if_false > 1 
-            then 
-            let if_false = concat_all (add_unary_condition x.cond) (cart_prod (List.hd if_false) (List.nth if_false 1))
-            in if_true @ if_false
-            else 
-            let if_false = (concat_all (add_unary_condition x.cond) (List.hd if_false))
-            in if_true @ if_false 
-        else (concat_all x.cond (List.hd if_true)) @ (concat_all (add_unary_condition x.cond) (List.hd if_false))
-  | _ -> [e] *)
-
+  
 (* function that takes as parameter an expression and returns a list of mutually exclusive expressions *)
 (* computes each possible boolean condition by traversing the expression tree *)
 (* whenever there are more than condition at a particular node, their cartesian product is computed *) 
@@ -178,6 +136,40 @@ let rec traverse_expression_tree (e: Ast.Expression.t): Ast.Expression.t list =
 
   | _ -> [e]
 
+  let rec filter_sat (condition_list: Ast.Expression.t list list): Ast.Expression.t list = 
+    match condition_list with 
+    | [] -> []
+    | c::cs ->
+      let sat_result = sat c
+      in if (fst sat_result) 
+          then (snd sat_result) @ (filter_sat cs)
+          else filter_sat cs
+
+  let rec create_one_combination (cs: Ast.Expression.t list) (indices: int list) (counter: int) (result: Ast.Expression.t list): Ast.Expression.t list = 
+    match cs with
+    | [] -> result
+    | x::xs -> 
+      if element_exists_in_list indices counter
+      then (create_one_combination xs indices (counter + 1)) (result @ [add_unary_condition x]) 
+      else (create_one_combination xs indices (counter + 1)) (result @ [x])  
+
+  let rec get_traversed_list (exp_tree_list: Ast.Expression.t list) = 
+    match exp_tree_list with 
+    | [] -> []
+    | x::[] -> traverse_expression_tree x
+    | x::xs -> cart_prod (traverse_expression_tree x) (get_traversed_list xs)
+  
+  let rec create_all_combinations (indices_list: int list list) (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (to_add: Ast.Expression.t list list): Ast.Expression.t list = 
+    match indices_list with
+    | [] -> filter_sat (combine (combine to_add cs) b) (*then none of the conditions are negated*)
+    | i::[] -> filter_sat (combine (combine to_add (create_one_combination cs i 1 []) ) b) 
+    | i::is -> 
+      let comb = filter_sat (combine (combine to_add (create_one_combination cs i 1 []) ) b) 
+      in (
+        match comb with 
+        | [] -> (create_all_combinations is b cs to_add)
+        | _ -> comb  @ (create_all_combinations is b cs to_add))
+    
 (* [Satisfiably Combinations] returns a list of satisfiable combinations  *)   
 (* This function is optimised by partitioning the set of conditions in cs into two *)
 (* The first partition contains all expressions which are or contain expression trees *)
@@ -189,62 +181,44 @@ let rec traverse_expression_tree (e: Ast.Expression.t): Ast.Expression.t list =
 (* The combinations of 'n choose n' @ 'n choose n-1' and those of second partition are computed *)
 (* The satisfiability is computed for every list of combinations for each k (where k ranges from 0 to n where n is the length of the second patition) *)
 (* A list of simplified satisfiable combinations is returned *)
-let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.Expression.t list list): Ast.Expression.t list =
-  let partition = List.partition check_contains_expression_tree cs 
-    in print_all_messages("First partition is " ^ pretty_print_evt_list (fst partition));
-    print_all_messages("Second partition is " ^ pretty_print_evt_list (snd partition));
 
-    let rec get_traversed_list (exp_tree_list: Ast.Expression.t list) = 
-      match exp_tree_list with 
-      | [] -> []
-      | x::[] -> traverse_expression_tree x
-      | x::xs -> cart_prod (traverse_expression_tree x) (get_traversed_list xs)
-      
-      in let traversed_list = get_traversed_list (fst partition) 
-      in print_all_messages("Traversed tree is " ^ pretty_print_evt_list traversed_list); 
+  let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.Expression.t list list): Ast.Expression.t list =
+    let partition = List.partition check_contains_expression_tree cs 
+      in let exp_trees = fst partition
+      in let partition = List.partition check_comparison (snd partition)
+      in let var_ass = fst partition 
+      in let others = snd partition
+      in print_all_messages("Exp partition is " ^ pretty_print_evt_list exp_trees);
+      print_all_messages("Equal partition is " ^ pretty_print_evt_list var_ass);
+      print_all_messages("Others partition is " ^ pretty_print_evt_list others);
+  
+      let traversed_list = get_traversed_list exp_trees
+        in print_all_messages("Traversed tree is " ^ pretty_print_evt_list traversed_list); 
+  
+      let num_list = create_list (List.length others)
+      in let n_c_n_minus_1_exp = List.map (fun x -> [x]) (traversed_list)  (*negate all but for one *)
+      in let n_c_n_exp = 
+        if (List.length (traversed_list)) > 0 
+        then List.map (fun x -> create_one_combination traversed_list x 1 []) [create_list (List.length (traversed_list))] (*negate all*)
+        else []
 
-    let num_list = create_list (List.length (snd partition))
-    in let rec filter_sat (condition_list: Ast.Expression.t list list): Ast.Expression.t list = 
-      match condition_list with 
-      | [] -> []
-      | c::cs ->
-        let sat_result = sat c
-        in if (fst sat_result) 
-            then (snd sat_result) @ (filter_sat cs)
-            else filter_sat cs
-    
-    in let rec create_one_combination (cs: Ast.Expression.t list) (indices: int list) (counter: int) (result: Ast.Expression.t list): Ast.Expression.t list = 
-      match cs with
-      | [] -> result
-      | x::xs -> 
-        if element_exists_in_list indices counter
-        then (create_one_combination xs indices (counter + 1)) (result @ [add_unary_condition x]) 
-        else (create_one_combination xs indices (counter + 1)) (result @ [x])  
+      in let n_c_n_minus_1_vass = List.map (fun x -> [x]) (var_ass)  (*negate all but for one *)
+      in let n_c_n_vass = 
+        if (List.length (var_ass)) > 0 
+        then List.map (fun x -> create_one_combination var_ass x 1 []) [create_list (List.length (var_ass))] (*negate all*)
+        else []
 
-    in let rec create_all_combinations (indices_list: int list list) (cs: Ast.Expression.t list) (to_add: Ast.Expression.t list list): Ast.Expression.t list = 
-      match indices_list with
-      | [] -> filter_sat (combine (combine to_add cs) b) (*then none of the conditions are negated*)
-      | i::[] -> filter_sat (combine (combine to_add (create_one_combination cs i 1 []) ) b) 
-      | i::is -> 
-        let comb = filter_sat (combine (combine to_add (create_one_combination cs i 1 []) ) b) 
-        in (
-          match comb with 
-          | [] -> (create_all_combinations is cs to_add)
-          | _ -> comb  @ (create_all_combinations is cs to_add))
-    
-    in let n_c_n_minus_1 = List.map (fun x -> [x]) (traversed_list)  (*negate all but for one *)
-    in let n_c_n = 
-      if (List.length (traversed_list)) > 0 
-      then List.map (fun x -> create_one_combination traversed_list x 1 []) [create_list (List.length (traversed_list))] (*negate all*)
-      else []
-    in let equal_combinations = n_c_n @ n_c_n_minus_1
+      (* in let fst_comb = List.map (fun x -> combine (n_c_n_exp @ n_c_n_minus_1_exp) x) (n_c_n_vass @ n_c_n_minus_1_vass) *)
+      in let fst_comb = combine_ll (n_c_n_exp @ n_c_n_minus_1_exp) (n_c_n_vass @ n_c_n_minus_1_vass)
+      (* in print_endline("COMBINATIONS FOR FIRST PART");
+      List.map (fun x -> print_endline(pretty_print_evt_list x)) fst_comb; *)
 
-    in let rec combinations (n:int) (to_add: Ast.Expression.t list list) = 
-      match n with
-      | 0 -> filter_sat (combine (combine to_add b) (snd partition)) (*in "n choose 0" none of the conditions are negated*)
-      | n -> (create_all_combinations (combnk n num_list) (snd partition) to_add) @ (combinations (n-1) to_add)
-
-    in combinations (List.length (snd partition)) equal_combinations 
+      in let rec combinations (n:int) (to_add: Ast.Expression.t list list) = 
+        match n with
+        | 0 -> filter_sat (combine (combine to_add b) (others)) (*in "n choose 0" none of the conditions are negated*)
+        | n -> (create_all_combinations (combnk n num_list) b (others) to_add) @ (combinations (n-1) to_add)
+  
+      in combinations (List.length others) fst_comb 
 
 (* A constrained monitor-set <b,M> symbolically potentially reaches a verdict spr(<b,M>,w) if the monitor set M can immediately reach a verdict without requiring tau transitions *)
 let rec spr (cms: Ast.Expression.t list * Ast.Monitor.t list) (verdict_list: int list): bool =

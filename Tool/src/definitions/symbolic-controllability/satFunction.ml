@@ -20,7 +20,7 @@ let sat_converting = ref 0.0
 let sat_converting_back = ref 0.0
 
 (** function to convert a list of expressions in the form Ast.Expression.t into the Z3.Expr.expr required by the Z3 library  *)
-let rec exp_list_to_z3 (c: Ast.Expression.t list) (a: Z3.Expr.expr list) (ctx: context) =
+let rec exp_list_to_z3 (c: Ast.Expression.t list) (a: Z3.Expr.expr list) (ctx: context): Z3.Expr.expr list =
   let rec single_exp_to_z3 (e: Ast.Expression.t) (ctx: context) =
     (match e with
       | Ast.Expression.Identifier(x) -> (Expr.mk_const ctx (Symbol.mk_string ctx x.name) (Integer.mk_sort ctx))
@@ -48,7 +48,8 @@ let rec exp_list_to_z3 (c: Ast.Expression.t list) (a: Z3.Expr.expr list) (ctx: c
         match x.operator with
         | Not -> (Boolean.mk_not ctx (single_exp_to_z3 x.arg ctx)))
   in match c with
-    | [] -> (Boolean.mk_and ctx a)
+    | [] -> a
+    (* (Boolean.mk_and ctx a) *)
     | e::es -> exp_list_to_z3 es (a @ [single_exp_to_z3 e ctx]) ctx
 
 (*function to convert a list of goals into a list of expressions of the form Ast.Expression.t*)
@@ -97,53 +98,87 @@ let rec goals_to_exp (goals: Z3.Goal.goal list): Ast.Expression.t =
   | g::[] -> z3_to_exp [Goal.as_expr g]
   | g::gs -> add_binary_condition (z3_to_exp [Goal.as_expr g]) (goals_to_exp gs) Ast.Expression.BinaryExp.And
 
-(*check if a list of expressions is satisfiable*)
-(*if it is satisfiable, then there the ctx solver must return at least one subgoal*)
-(*if the subgoal returned is false, then return (false, []) since the list of expressions in unsat*)
-(*otherwise get the list of subgoals and convert them back to AST expressions*)
-(*return (true, [Ast.Expression])*)            
+(* checks if a list of z3 expressions is satisfible using tactics *)
+(* if sat, then return (true, simp) where simp is a list of simplified exps *)
+(* otherwise return (false, []) *)
+let full_sat (cndts: Z3.Expr.expr list) (ctx) (cfg): (bool * Ast.Expression.t list) = 
+  let g = (mk_goal ctx true false false) in
+  (Goal.add g cndts) ;
+  
+  let result = (Tactic.apply (and_then ctx (mk_tactic ctx ("ctx-solver-simplify")) (mk_tactic ctx "propagate-ineqs") []) g None) in
+  
+  if is_decided_unsat (get_subgoal result 0) 
+  then (false, [])
+  else( 
+    let subgoals = get_subgoals result
+    in let resulting_exp = [goals_to_exp subgoals] 
+    in (true, resulting_exp)
+  )
+    
+(* Optimised using batch checking -- checks if a list of expressions is satistiable *)
+(* STEP 1: convert the expressions into a list of z3 expressions *)
+(* STEP 2: if the list is larger than two, then check in batches of 2 *)
+(* STEP 2.1: if the two conditions are unsatisfiable, then return (false, []) *)
+(*           else go back to STEP 2 with the next batch *)
+(* STEP 2.2: check the whole z3 expression list to check if it is satisfiable *)
+(*           if whole expression is sat, then return (true, simp) where simp is the simplified exp *)
+(*           else return (false, []) *)
+(* STEP 3: else go to STEP 2.2 *)
+(* NOTE: full_sat() returns sat or unsat and the resulting simplified exp *)
+(*       inner_sat() simply returns sat or unsat and is only used in batch checking *)
+
 let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
   (* print_all_messages ("\nChecking SAT for " ^ (pretty_print_evt_list c)); *)
-  
-  (* let start_time = Sys.time () in *)
-
   let cfg = [("model", "true")] in 
-    let ctx = (mk_context cfg) in
-      let cndts = exp_list_to_z3 c [] ctx in
-      (* sat_converting := !sat_converting +. (Sys.time () -. start_time); *)
+  let ctx = (mk_context cfg) in
+  let cndts = exp_list_to_z3 c [] ctx in
 
-        let g = (mk_goal ctx true false false) in
-        (Goal.add g [ cndts ]) ;
-        (*print_endline("-------------------");
-        print_endline(Goal.to_string g) ;
-        print_endline("-------------------");*)
-
-        (
-          let result = (Tactic.apply (and_then ctx (mk_tactic ctx ("ctx-solver-simplify")) (mk_tactic ctx "propagate-ineqs") []) g None) in
-            (if is_decided_unsat (get_subgoal result 0) 
-            then(
-              (*print_endline("unsat");*)
-              (* let finish_time = Sys.time () *)
-              (* in sat_timer := !sat_timer +. (finish_time -. start_time); *)
-              (false, [])
-            )
-            else( 
-              (* print_endline("sat");
-              print_endline("subgoals are: ");
-              List.iter (fun x -> print_endline(Goal.to_string x)) (get_subgoals result);  *)
-              let subgoals = get_subgoals result
-             
-              (* in let start_converting = Sys.time () *)
-              in let resulting_exp = [goals_to_exp subgoals] 
-              (* in sat_converting_back := !sat_converting_back +. (Sys.time() -. start_converting); *)
-
-              (* in print_endline(pretty_print_evt_list [goals_to_exp subgoals]);
-              print_endline("RESULTING:");
-              print_endline (pretty_print_evt_list resulting_exp); *)
-              
-              (* let finish_time = Sys.time () *)
-              (* in sat_timer := !sat_timer +. (finish_time -. start_time); *)
-
-              in (true, resulting_exp)
-            ));
+  let inner_sat (c: Z3.Expr.expr list): bool = (
+    let g = (mk_goal ctx true false false) in
+    (Goal.add g c) ;
+    
+    let result = (Tactic.apply (and_then ctx (mk_tactic ctx ("ctx-simplify")) (mk_tactic ctx "propagate-ineqs") []) g None) in
+      if is_decided_unsat (get_subgoal result 0) 
+      then false
+      else true  
+  )    
+  
+    in let rec batch_sat (cs: Z3.Expr.expr list) = 
+      match cs with 
+      | [] -> 
+        (* print_all_messages("checking final"); *)
+        let final_res = full_sat cndts ctx cfg  (*check whole exp list*)
+        in if fst final_res
+        then (
+          (* print_all_messages("SAT!!"); *)
+          final_res
         )
+        else (
+          (* print_all_messages("UNSAT!!"); *)
+          final_res
+        )
+      | c::[] ->
+        if inner_sat [c]
+        then batch_sat []
+        else (
+          (* print_all_messages("Immediately not sat!!"); *)
+          (false, []) 
+        )
+      | c1::c2::cs -> 
+        if inner_sat ([c1]@[c2])
+        then (
+          (* print_all_messages("sub sat!!"); *)
+          batch_sat cs)
+        else (
+          (* print_all_messages("Immediately not sat!!"); *)
+          (false, []) 
+        )
+
+    in
+    if List.length c <= 2 
+    then (
+      (* print_all_messages("Length 2 or smaller");  *)
+      full_sat cndts ctx cfg
+    )
+    else 
+      batch_sat cndts
