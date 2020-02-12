@@ -133,8 +133,21 @@ let rec traverse_expression_tree (e: Ast.Expression.t): Ast.Expression.t list =
               in let if_true = concat_all x.cond (final_cart_prod if_true)
                 in let if_false = concat_all (add_unary_condition x.cond) (final_cart_prod if_false)
                   in if_true @ if_false
-
   | _ -> [e]
+
+  (* let rec traverse_expression_tree (e: Ast.Expression.t): Ast.Expression.t list list =
+    match e with 
+    | Ast.Expression.ExpressionTree(x) ->
+      let op = Ast.Expression.BinaryExp.And
+        in let rec inner_trav (e': Ast.Expression.t list) = 
+          match e' with
+          | [] -> []
+          | x::[] -> traverse_expression_tree x
+          | x::xs -> (traverse_expression_tree x) @ (inner_trav xs)
+            in let if_true = combine (inner_trav x.if_true) [x.cond]
+              in let if_false = combine (inner_trav x.if_false) [add_unary_condition x.cond]
+                in if_true @ if_false
+    | _ -> [[e]] *)
 
   let rec filter_sat (condition_list: Ast.Expression.t list list): Ast.Expression.t list = 
     match condition_list with 
@@ -151,13 +164,27 @@ let rec traverse_expression_tree (e: Ast.Expression.t): Ast.Expression.t list =
     | x::xs -> 
       if element_exists_in_list indices counter
       then (create_one_combination xs indices (counter + 1)) (result @ [add_unary_condition x]) 
-      else (create_one_combination xs indices (counter + 1)) (result @ [x])  
+      else (create_one_combination xs indices (counter + 1)) (result @ [x])   
 
   let rec get_traversed_list (exp_tree_list: Ast.Expression.t list) = 
     match exp_tree_list with 
     | [] -> []
     | x::[] -> traverse_expression_tree x
     | x::xs -> cart_prod (traverse_expression_tree x) (get_traversed_list xs)
+
+  (* let rec create_one_combination (cs: Ast.Expression.t list list) (indices: int list) (counter: int) (result: Ast.Expression.t list): Ast.Expression.t list = 
+    match cs with
+    | [] -> result
+    | x::xs -> 
+      if element_exists_in_list indices counter
+      then (create_one_combination xs indices (counter + 1)) (result @ [add_unary_condition x]) 
+      else (create_one_combination xs indices (counter + 1)) (result @ [x])  
+  
+  let rec get_traversed_list (exp_tree_list: Ast.Expression.t list) = 
+    match exp_tree_list with 
+    | [] -> []
+    | x::[] -> traverse_expression_tree x
+    | x::xs -> combine_ll (traverse_expression_tree x) (get_traversed_list xs)  *)
   
   let rec create_all_combinations (indices_list: int list list) (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (to_add: Ast.Expression.t list list): Ast.Expression.t list = 
     match indices_list with
@@ -194,6 +221,9 @@ let rec traverse_expression_tree (e: Ast.Expression.t): Ast.Expression.t list =
   
       let traversed_list = get_traversed_list exp_trees
         in print_all_messages("Traversed tree is " ^ pretty_print_evt_list traversed_list); 
+        (* in 
+        print_endline("Traversed tree is ");
+        List.map (fun x -> print_endline(pretty_print_evt_list x)) traversed_list;  *)
   
       let num_list = create_list (List.length others)
       in let n_c_n_minus_1_exp = List.map (fun x -> [x]) (traversed_list)  (*negate all but for one *)
