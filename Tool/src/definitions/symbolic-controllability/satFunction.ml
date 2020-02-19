@@ -120,30 +120,17 @@ let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
 
         (
           let result = (Tactic.apply (and_then ctx (mk_tactic ctx ("ctx-solver-simplify")) (mk_tactic ctx "propagate-ineqs") []) g None) in
+          (* let result = (Tactic.apply (par_and_then ctx (mk_tactic ctx ("ctx-solver-simplify")) (par_and_then ctx (mk_tactic ctx "propagate-ineqs") (mk_tactic ctx "propagate-values"))) g None) in *)
             (if is_decided_unsat (get_subgoal result 0) 
             then(
-              (*print_endline("unsat");*)
+              (* print_endline("unsat"); *)
               let finish_time = Sys.time ()
               in sat_timer := !sat_timer +. (finish_time -. start_time);
               (false, [])
             )
             else( 
-              (* print_endline("sat");
-              print_endline("subgoals are: ");
-              List.iter (fun x -> print_endline(Goal.to_string x)) (get_subgoals result);  *)
               let subgoals = get_subgoals result
-             
-              in let start_converting = Sys.time ()
               in let resulting_exp = [goals_to_exp subgoals] 
-              in sat_converting_back := !sat_converting_back +. (Sys.time() -. start_converting);
-
-              (* in print_endline(pretty_print_evt_list [goals_to_exp subgoals]);
-              print_endline("RESULTING:");
-              print_endline (pretty_print_evt_list resulting_exp); *)
-              
-              let finish_time = Sys.time ()
-              in sat_timer := !sat_timer +. (finish_time -. start_time);
-
-              (true, resulting_exp)
+              in (true, resulting_exp)
             ));
         )

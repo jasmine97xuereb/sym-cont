@@ -327,9 +327,16 @@ let cns (b: Ast.Expression.t list) (mon_list: Ast.Monitor.t list): Ast.Expressio
       (*check if any of those to keep are dependent on any from the ones to be discarded*)
       (* let to_keep = indirect_dependency (List.hd b) to_keep  *)
       let to_keep = indirect_dependency b to_keep 
-      in if Vars.subset to_keep v
-      then filter_b b (Vars.elements to_keep)
-      else b 
+      in print_endline("WE ARE KEEPING");
+      print_all (Vars.elements to_keep); 
+      if Vars.subset to_keep v
+      then (
+        print_endline("must filter");
+        filter_b b (Vars.elements to_keep))
+      else(
+        print_endline("keeping all");
+        b
+      )  
     )
   in if Vars.is_empty v 
   then []
