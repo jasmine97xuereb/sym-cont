@@ -88,8 +88,9 @@ def ComplexitySteps(complexity):
 # def Plot(df):
 
 
-results = UpToComplexity(15)
+# results = UpToComplexity(15)
 # results = ComplexitySteps([1,5,10])
+results = RunToolOnce("l(x).(if x==4 then k<x>.2 else k<x>.1) + (if x mod 2 == 0 then if x<6 then if x>2 then k<x>.2 else k<x>.1 else k<x>.1 else k<x>.1) + (if x mod 2 == 0 then if x<8 then if x<6 then if x>2 then k<x>.2 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1) + (if x mod 2 == 0 then if x<10 then if x<8 then if x<6 then if x>2 then k<x>.2 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1) + (if x mod 2 == 0 then if x<12 then if x<10 then if x<8 then if x<6 then if x>2 then k<x>.2 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1) + (if x mod 2 == 0 then if x<14 then if x<12 then if x<10 then if x<8 then if x<6 then if x>2 then k<x>.2 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1)")
 print(results)
-results.to_csv("RunningTimes.csv")
+# results.to_csv("RunningTimes.csv")
 # Plot(results)
