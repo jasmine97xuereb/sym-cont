@@ -91,5 +91,5 @@ def ComplexitySteps(complexity):
 results = UpToComplexity(7)
 # results = ComplexitySteps([1,5,10])
 print(results)
-results.to_csv("RunningTimesIfs.csv")
+results.to_csv("RunningTimesNew.csv")
 # Plot(results)
