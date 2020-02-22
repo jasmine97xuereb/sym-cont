@@ -60,9 +60,9 @@ def AnalyseMonitors(repetition):
   return time_record
 
 def UpToComplexity(complexity):  
-  results = pd.DataFrame(columns=['Choice','NestedIFs','Recursion'])
+  # results = pd.DataFrame(columns=['Choice','NestedIFs','Recursion'])
   # results = pd.DataFrame(columns=['Choice','Recursion'])
-  # results = pd.DataFrame(columns=['NestedfIFs'])
+  results = pd.DataFrame(columns=['NestedfIFs'])
 
   for i in range (1, complexity+1):
     print("For complexity ", i)
@@ -88,9 +88,8 @@ def ComplexitySteps(complexity):
 # def Plot(df):
 
 
-# results = UpToComplexity(15)
+results = UpToComplexity(7)
 # results = ComplexitySteps([1,5,10])
-results=RunToolOnce("l(x).(if x==4 then k<x>.2 else k<x>.1) + (if x mod 2 == 0 then if x<6 then if x>2 then k<x>.2 else k<x>.1 else k<x>.1 else k<x>.1) + (if x mod 2 == 0 then if x<8 then if x<6 then if x>2 then k<x>.2 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1) + (if x mod 2 == 0 then if x<10 then if x<8 then if x<6 then if x>2 then k<x>.2 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1) + (if x mod 2 == 0 then if x<12 then if x<10 then if x<8 then if x<6 then if x>2 then k<x>.2 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1) + (if x mod 2 == 0 then if x<14 then if x<12 then if x<10 then if x<8 then if x<6 then if x>2 then k<x>.2 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1) + (if x mod 2 == 0 then if x<16 then if x<14 then if x<12 then if x<10 then if x<8 then if x<6 then if x>2 then k<x>.2 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1 else k<x>.1)")
 print(results)
 # results.to_csv("RunningTimes.csv")
 # Plot(results)
