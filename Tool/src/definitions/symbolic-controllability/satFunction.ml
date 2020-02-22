@@ -49,7 +49,6 @@ let rec exp_list_to_z3 (c: Ast.Expression.t list) (a: Z3.Expr.expr list) (ctx: c
         | Not -> (Boolean.mk_not ctx (single_exp_to_z3 x.arg ctx)))
   in match c with
     | [] -> a
-    (* (Boolean.mk_and ctx a) *)
     | e::es -> exp_list_to_z3 es (a @ [single_exp_to_z3 e ctx]) ctx
 
 (*function to convert a list of goals into a list of expressions of the form Ast.Expression.t*)
@@ -146,39 +145,16 @@ let sat (c: Ast.Expression.t list): (bool * Ast.Expression.t list) =
     in let rec batch_sat (cs: Z3.Expr.expr list) = 
       match cs with 
       | [] -> 
-        (* print_all_messages("checking final"); *)
-        let final_res = full_sat cndts ctx cfg  (*check whole exp list*)
-        in if fst final_res
-        then (
-          (* print_all_messages("SAT!!"); *)
-          final_res
-        )
-        else (
-          (* print_all_messages("UNSAT!!"); *)
-          final_res
-        )
+        full_sat cndts ctx cfg  (*check whole exp list*)
       | c::[] ->
         if inner_sat [c]
         then batch_sat []
-        else (
-          (* print_all_messages("Immediately not sat!!"); *)
-          (false, []) 
-        )
+        else (false, []) 
       | c1::c2::cs -> 
         if inner_sat ([c1]@[c2])
-        then (
-          (* print_all_messages("sub sat!!"); *)
-          batch_sat cs)
-        else (
-          (* print_all_messages("Immediately not sat!!"); *)
-          (false, []) 
-        )
-
+        then batch_sat cs
+        else (false, []) 
     in
     if List.length c <= 2 
-    then (
-      (* print_all_messages("Length 2 or smaller");  *)
-      full_sat cndts ctx cfg
-    )
-    else 
-      batch_sat cndts
+    then full_sat cndts ctx cfg
+    else batch_sat cndts
