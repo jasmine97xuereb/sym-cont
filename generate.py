@@ -18,7 +18,7 @@ for i in range(nb_choice-1):
 
 string = string + "+(recX.k<"+ str(nb_choice+1) +">.X)"    
 
-print(string)
+# print(string)
 
 if nb_choice == 1:
   string2 = "l(x).if x==4 then k<x>.2 else k<x>.1"
@@ -42,7 +42,7 @@ for i in range(nb_choice-1):
 
 string3 = string3 + "+(k<"+ str(nb_choice+1) +">.(l<" +str(nb_choice+1)+ ">.X)+(q<" +str(nb_choice+1)+ ">.1))"    
 
-print(string3)
+# print(string3)
 
 # for i in range(nb_choice-1):
 #     string4 += "k<(x+" +str(i+1)+ ")>."
