@@ -88,8 +88,8 @@ def ComplexitySteps(complexity):
 # def Plot(df):
 
 
-results = UpToComplexity(7)
+results = UpToComplexity(5)
 # results = ComplexitySteps([1,5,10])
 print(results)
-results.to_csv("RunningTimesNew.csv")
+# results.to_csv("RunningTimesNew.csv")
 # Plot(results)
