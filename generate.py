@@ -88,8 +88,8 @@ else:
         counter -= 2
     temp = temp + "if x>2 then k<x>." + inner_t + " else k<x>." + inner_f
     for x in range(i+1):
-        temp = temp + " else " + inner_f
-    temp = temp+" else " + inner_f
+        temp = temp + " else k<x>." + inner_f
+    temp = temp+" else k<x>." + inner_f
     string4 = string4 + " + ("+temp+")"
 
-print(string4) 
+print(string4)
