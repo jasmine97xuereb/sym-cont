@@ -244,12 +244,13 @@ let rec spa (cms: Ast.Expression.t list * Ast.Monitor.t list) (evt: Ast.Symbolic
         match sym_reduce m1 (fst cms) evt c  with 
           | REDUCED(x)::_ -> true (*if one monitor reduces it is enough*)
           | ERROR(x)::xs -> 
-            (let rec check_remaining xs = 
+            let rec check_remaining xs = 
               match xs with 
               | [] -> check_all_conds m2
               | REDUCED(y)::ys -> true
               | _::ys -> check_remaining ys  
-            in check_remaining xs)  
+            in check_remaining xs
+          | [] -> false
             
     in check_all_conds (snd cms)
 

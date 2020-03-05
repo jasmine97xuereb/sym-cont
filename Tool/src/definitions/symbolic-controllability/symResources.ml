@@ -89,11 +89,12 @@ and fv_exp (e_list: Ast.Expression.t list) (var_set: Vars.t) (tvars_checked: Ast
   match e_list with
     | [] -> var_set
     | exp::exps ->
-      (match exp with
-        | Ast.Expression.Identifier(x) -> fv_exp exps (Vars.add x var_set) tvars_checked
-        | Ast.Expression.Literal(x) -> fv_exp exps var_set tvars_checked
-        | Ast.Expression.BinaryExp(x) -> fv_exp exps (Vars.union (fv_exp [x.arg_rt] var_set tvars_checked) (fv_exp [x.arg_lt] var_set tvars_checked)) tvars_checked
-        | Ast.Expression.UnaryExp(x) -> fv_exp exps (fv_exp [x.arg] var_set tvars_checked) tvars_checked)
+      match exp with
+      | Ast.Expression.Identifier(x) -> fv_exp exps (Vars.add x var_set) tvars_checked
+      | Ast.Expression.Literal(x) -> fv_exp exps var_set tvars_checked
+      | Ast.Expression.BinaryExp(x) -> fv_exp exps (Vars.union (fv_exp [x.arg_rt] var_set tvars_checked) (fv_exp [x.arg_lt] var_set tvars_checked)) tvars_checked
+      | Ast.Expression.UnaryExp(x) -> fv_exp exps (fv_exp [x.arg] var_set tvars_checked) tvars_checked
+      | _ -> var_set    
 
 (*function to calculate the set of bound tvariables in a monitor list*)
 let rec btv (cms: Ast.Monitor.t list) (bound_set: BoundTVars.t): BoundTVars.t = 
