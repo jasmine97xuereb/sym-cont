@@ -20,7 +20,6 @@ let rec rc (ms: Ast.Monitor.t list) (sevt: Ast.SymbolicEvent.t) (cs: Ast.Express
       | Ast.Monitor.Verdict(_) -> []
       | Ast.Monitor.TVar(x) -> get_tvar_conditions x evt c
       | Ast.Monitor.Choice(x) -> (inner_rc x.left evt c) @ (inner_rc x.right evt c)
-      (* inner_rc x.right evt (inner_rc x.left evt c)  *)
       | Ast.Monitor.ExpressionGuard(x) -> get_exp_guard_conditions x evt c
       | Ast.Monitor.QuantifiedGuard(x) -> get_quant_guard_conditions x evt c 
       | Ast.Monitor.Conditional(x) -> get_if_conditions x evt c
@@ -113,6 +112,34 @@ let rec combnk k lst =
             inner new_result k xs
     in inner [] k lst  
 
+  let rec filter_sat (condition_list: Ast.Expression.t list list): Ast.Expression.t list = 
+    match condition_list with 
+    | [] -> []
+    | c::cs ->
+      let sat_result = sat c
+      in if (fst sat_result) 
+         then (snd sat_result) @ (filter_sat cs)
+         else filter_sat cs
+  
+  let rec create_one_combination (cs: Ast.Expression.t list) (indices: int list) (counter: int) (result: Ast.Expression.t list): Ast.Expression.t list = 
+    match cs with
+    | [] -> result
+    | x::xs -> 
+      if element_exists_in_list indices counter
+      then (create_one_combination xs indices (counter + 1)) (result @ [add_unary_condition x]) 
+      else (create_one_combination xs indices (counter + 1)) (result @ [x])  
+
+  let rec create_all_combinations (indices_list: int list list) (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (to_add: Ast.Expression.t list list): Ast.Expression.t list = 
+    match indices_list with
+    | [] -> filter_sat (combine (combine to_add cs) b) (*then none of the conditions are negated*)
+    | i::[] -> filter_sat (combine (combine to_add (create_one_combination cs i 1 []) ) b) 
+    | i::is -> 
+      let comb = filter_sat (combine (combine to_add (create_one_combination cs i 1 []) ) b) 
+      in (
+        match comb with 
+        | [] -> (create_all_combinations is b cs to_add)
+        | _ -> comb  @ (create_all_combinations is b cs to_add))
+
 (* [Satisfiably Combinations] returns a list of satisfiable combinations  *)   
 (* This function is optimised by partitioning the set of conditions in cs into two *)
 (* The first partition contains all binary expressions whose operator is an '=' *)
@@ -126,33 +153,6 @@ let rec combnk k lst =
 let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.Expression.t list list): Ast.Expression.t list =
   let partition = List.partition check_comparison cs 
     in let num_list = create_list (List.length (snd partition))
-    in let rec filter_sat (condition_list: Ast.Expression.t list list): Ast.Expression.t list = 
-      match condition_list with 
-      | [] -> []
-      | c::cs ->
-        let sat_result = sat c
-        in if (fst sat_result) 
-           then (snd sat_result) @ (filter_sat cs)
-           else filter_sat cs
-    
-    in let rec create_one_combination (cs: Ast.Expression.t list) (indices: int list) (counter: int) (result: Ast.Expression.t list): Ast.Expression.t list = 
-      match cs with
-      | [] -> result
-      | x::xs -> 
-        if element_exists_in_list indices counter
-        then (create_one_combination xs indices (counter + 1)) (result @ [add_unary_condition x]) 
-        else (create_one_combination xs indices (counter + 1)) (result @ [x])  
-
-    in let rec create_all_combinations (indices_list: int list list) (cs: Ast.Expression.t list) (to_add: Ast.Expression.t list list): Ast.Expression.t list = 
-      match indices_list with
-      | [] -> filter_sat (combine (combine to_add cs) b) (*then none of the conditions are negated*)
-      | i::[] -> filter_sat (combine (combine to_add (create_one_combination cs i 1 []) ) b) 
-      | i::is -> 
-        let comb = filter_sat (combine (combine to_add (create_one_combination cs i 1 []) ) b) 
-        in (
-          match comb with 
-          | [] -> (create_all_combinations is cs to_add)
-          | _ -> comb  @ (create_all_combinations is cs to_add))
     
     (*for first element of partition i.e. when there is equality*)
     in let n_c_n_minus_1 = List.map (fun x -> [x]) (fst partition)  (*negate all but for one *)
@@ -165,7 +165,7 @@ let rec sc (b: Ast.Expression.t list) (cs: Ast.Expression.t list) (result: Ast.E
     in let rec combinations (n:int) (to_add: Ast.Expression.t list list) = 
       match n with
       | 0 -> filter_sat (combine (combine to_add b) (snd partition)) (*in "n choose 0" none of the conditions are negated*)
-      | n -> (create_all_combinations (combnk n num_list) (snd partition) to_add) @ (combinations (n-1) to_add)
+      | n -> (create_all_combinations (combnk n num_list) b (snd partition) to_add) @ (combinations (n-1) to_add)
 
     in combinations (List.length (snd partition)) equal_combinations 
    
@@ -208,13 +208,6 @@ let rec spr (cms: Ast.Expression.t list * Ast.Monitor.t list) (verdict_list: int
 (*return a tuple made up of a boolean value and the simplified boolean condition *)
 (*the second element of the tuple is always [] whenver spa is false *)
 let rec spa (cms: Ast.Expression.t list * Ast.Monitor.t list) (evt: Ast.SymbolicEvent.t) (c: Ast.Expression.t) (spa_list: int list): bool =
-  (*let satisfiable = match fst cms with
-    | [] -> (sat [c])
-    | b::bs -> (sat [add_binary_condition b c (Ast.Expression.BinaryExp.And)])  *)
-  (*let satisfiable = sat [c] in 
-  if fst satisfiable == false (*if not sat(b^c) return false immediately*) 
-  then (false, [])
-  else ( *)
     let rec check_all_conds (mon_list:Ast.Monitor.t list) = 
       match mon_list with
       | [] -> false
@@ -398,11 +391,7 @@ let isSymControllable (mon: Ast.Monitor.t list) =
                     print_all_messages (pretty_print_evt_list c);
                     
                     sat_timer := 0.0; (*since sat solver is also used in saft*)
-                    (* let sc_start_time = Sys.time () in  *)
                     let sat_cond = sc (fst cm) c [] in 
-                      (* let sc_finish_time = Sys.time () in *)
-                      (* print_endline("Total time taken for SC is " ^ string_of_float(sc_finish_time -. sc_start_time)); *)
-                      (* print_endline("Time taken to from SAT solver is " ^ string_of_float(!sat_timer)); *)
                       sat_timer := 0.0;
 
                       print_all_messages ("\nSatisfiability Conditions (SC) " ^ (pretty_print_evt_list sat_cond));
