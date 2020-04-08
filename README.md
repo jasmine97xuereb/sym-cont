@@ -75,27 +75,13 @@ oasis setup -setup-update dynamic
 make
 ```
 
-### Installing
-
-A step by step series of examples that tell you how to get a development env running
-
-Say what the step will be
-
-```
-Give the example
-```
-
-And repeat
-
-```
-until finished
-```
-
-End with an example of getting some data out of the system or using it for a little demo
-
 ## Running the tests
 
-Explain how to run the automated tests for this system
+How to run the automated tests for this system
+To run the automated test, run the file [run.py](https://github.com/jasmine97xuereb/sym-cont/blob/master/run.py). 
+```
+python run.py
+```
 
 ### Break down into end to end tests
 
