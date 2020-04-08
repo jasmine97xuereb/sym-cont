@@ -88,24 +88,11 @@ This will automatically run the system set-up with generated monitor description
 The experiment is repeated for incremental size and complexity for each of the three templates in [generate.py](https://github.com/jasmine97xuereb/sym-cont/blob/master/generate.py), starting at n=1 up to n=15.
 Each run has a predefined time threshold of 10 hours, which if overcame, the run is terminated. 
 
-### Break down into end to end tests
+This will produce a CSV file with 3 columns (one for each monitor template) and 15 rows (for incremental size and complexity). 
+Each reading represents the corresponding mean running time. 
 
-Explain what these tests test and why
+<!-- ## Authors
 
-```
-Give an example
-```
+* **Jasmine Xuereb** - *Initial work* - [SymbolicControllability](https://github.com/jasmine97xuereb/sym-cont)
 
-### And coding style tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-## Authors
-
-* **Jasmine Xuereb** - *Initial work* - [PurpleBooth](https://github.com/PurpleBooth)
-
-See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
+See also the list of [collaborator](https://github.com/your/project/contributors) who participated in this project. -->
