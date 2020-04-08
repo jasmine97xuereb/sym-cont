@@ -67,9 +67,13 @@ nb-configuration.xml
 target/
 doc/
 
-#ocaml generated file 
-.ipynb_checkpoints/
+# ocaml generated file. 
 *.native
 
-#enviornment files
+# virtual environment.
 venv/
+
+# evaluation files.
+.ipynb_checkpoints/
+*.png
+*.ipynb
