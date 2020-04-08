@@ -1,4 +1,4 @@
-# Implementing Symbolic Controllability
+# Symbolic Controllability
 
 A tool using OCaml to check whether a monitor is symbolically controllable.
 
@@ -10,19 +10,24 @@ These instructions will get you a copy of the project up and running on your loc
 
 What things you need to install the software and how to install them.
 
-```
 #### Installs curl
+```
 sudo apt install curl
+```
 
 #### Installs opam (version 2.0.5 at time of writing)
+```
 sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
+```
 
 #### Sets up environment
+```
 opam init
-
+```
 #### Sets up necessary environment variables
+```
 eval $(opam env)
-
+```
 #### Installs the ocaml compiler version 4.08.0
 opam switch create 4.08.0
 eval $(opam env)
@@ -63,7 +68,7 @@ oasis setup -setup-update dynamic
 
 #### To build the project
 make
-```
+
 
 ### Installing
 
