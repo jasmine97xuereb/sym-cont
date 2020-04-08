@@ -12,10 +12,8 @@ my_env = os.environ.copy()
 my_env['DYLD_LIBRARY_PATH'] = "/Users/jasminexuereb/.opam/4.08.0/lib/z3" 
 FNULL = open(os.devnull, 'w') # to hide console output of the subprocess
 
-# remove outliers by removing anything which is > or < than the standard deviation (how spread data is around the mean)
 # return the mean
 def GetMean(df):
-  df_clean = df[np.abs(df.Time - df.Time.mean()) <= (df.Time.std())]
   mean = df_clean.Time.mean()
   return mean
 
@@ -32,17 +30,14 @@ def RunToolOnce(mon):
 #   print(time)
   return time
 
-# run the tool a number of times
-# store each running time in a dataframe
-# clean the dataframe and return the mean running time
+# run the tool a number of times and return the mean running time
 def GetData(mon):
   time_arr = []
-#   df = pd.DataFrame(columns=['Time'])
-  return RunToolOnce(mon)
-#   for i in range (0, 2):
-#     time_arr.append(RunToolOnce(mon))
-#   df['Time'] = time_arr
-#   return GetMean(df)
+  df = pd.DataFrame(columns=['Time'])
+  for i in range (0, 2):
+    time_arr.append(RunToolOnce(mon))
+  df['Time'] = time_arr
+  return GetMean(df)
 
 # get the list of generated monitors
 # specify the required number of repetitions by passing this value as a parameter
@@ -53,17 +48,14 @@ def AnalyseMonitors(repetition):
   time_record = []  
   output = os.popen("python generate.py "+str(repetition)).read()
   mon_arr = (output.splitlines())
-#   print(output)
   for mon in mon_arr:
     print("Monitor being Analysed: ", mon)
     time_record.append(float(GetData(mon)))
   return time_record
 
 def UpToComplexity(complexity):  
-  # results = pd.DataFrame(columns=['Choice','NestedIFs','Recursion'])
-  # results = pd.DataFrame(columns=['Choice','Recursion'])
-  results = pd.DataFrame(columns=['NestedfIFs'])
-
+  results = pd.DataFrame(columns=['Cnd','Rec','Brc'])
+  
   for i in range (1, complexity+1):
     print("For complexity ", i)
     record = AnalyseMonitors(i)
@@ -72,24 +64,6 @@ def UpToComplexity(complexity):
   results.index += 1 
   return results
 
-def ComplexitySteps(complexity):  
-  # results = pd.DataFrame(columns=['Choice','NestedIFs','Recursion'])
-  # results = pd.DataFrame(columns=['Choice','Recursion'])
-  results = pd.DataFrame(columns=['NestedfIFs'])
-
-  for i in complexity:
-    print("For complexity ", i)
-    record = AnalyseMonitors(i)
-    print(record)
-    results.loc[len(results)] = record
-  results.index += 1 
-  return results
-
-# def Plot(df):
-
-
-results = UpToComplexity(5)
-# results = ComplexitySteps([1,5,10])
+results = UpToComplexity(15)
 print(results)
-# results.to_csv("RunningTimesNew.csv")
-# Plot(results)
+results.to_csv("RunningTimes.csv")
