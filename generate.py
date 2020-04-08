@@ -6,50 +6,39 @@ except:
   print("Enter Number of Repetition: ") 
   nb_choice = int(input())
 
-# string = "(recX.k<1>.X)"
-# string2="l(x).(if x==4 then k<x>.2 else k<x>.1)"
-# string3 = "rec X.(k<1>.(l<1>.X)+(q<1>.1))"
-# string4 = "l(x).k<x>."
+string1= "l(x).(if x==4 then k<x>.2 else k<x>.1)"
+string2 = "rec X.(k<1>.(l<1>.X)+(q<1>.1))"
+string3 = ""
 
-# counter = 6+(2*(nb_choice-1)) 
+# ------------------------- generating M_cnd -----------------------------------
 
-# for i in range(nb_choice-1):
-#     string = string + "+ (recX.k<" + str(i+2) + ">.X)"
+if nb_choice == 1:
+  string1 = "l(x).if x==4 then k<x>.2 else k<x>.1"
+else:
+  for i in range(nb_choice-1):
+    temp = "if x mod 2 == 0 then "
+    counter = 6+(2*(i)) 
+    for x in range(i+1):
+        temp = temp + "if x<" + str(counter) + " then " 
+        counter -= 2
+    temp = temp + "if x>2 then k<x>.2 else k<x>.1"
+    for x in range(i+1):
+        temp = temp + " else k<x>.1"
+    temp = temp+" else k<x>.1"
+    string1 = string1 + " + ("+temp+")"
 
-# string = string + "+(recX.k<"+ str(nb_choice+1) +">.X)"    
+print(string1) 
 
-# print(string)
+# ------------------------- generating M_rec -----------------------------------
 
-# if nb_choice == 1:
-#   string2 = "l(x).if x==4 then k<x>.2 else k<x>.1"
-# else:
-#   for i in range(nb_choice-1):
-#     temp = "if x mod 2 == 0 then "
-#     counter = 6+(2*(i)) 
-#     for x in range(i+1):
-#         temp = temp + "if x<" + str(counter) + " then " 
-#         counter -= 2
-#     temp = temp + "if x>2 then k<x>.2 else k<x>.1"
-#     for x in range(i+1):
-#         temp = temp + " else k<x>.1"
-#     temp = temp+" else k<x>.1"
-#     string2 = string2 + " + ("+temp+")"
+for i in range(nb_choice-1):
+    string2 = string2 + "+ (k<" + str(i+2) + ">.(l<" +str(i+2)+ ">.X)+(q<" +str(i+2)+ ">.1))"
 
-# print(string2) 
+string2 = string2 + "+(k<"+ str(nb_choice+1) +">.(l<" +str(nb_choice+1)+ ">.X)+(q<" +str(nb_choice+1)+ ">.1))"    
 
-# for i in range(nb_choice-1):
-#     string3 = string3 + "+ (k<" + str(i+2) + ">.(l<" +str(i+2)+ ">.X)+(q<" +str(i+2)+ ">.1))"
+print(string2)
 
-# string3 = string3 + "+(k<"+ str(nb_choice+1) +">.(l<" +str(nb_choice+1)+ ">.X)+(q<" +str(nb_choice+1)+ ">.1))"    
-
-# print(string3)
-
-# for i in range(nb_choice-1):
-#     string4 += "k<(x+" +str(i+1)+ ")>."
-# string4 += "1"
-
-# print(string4)
-
+# ------------------------- generating M_brc -----------------------------------
 
 inner_t = ""
 for i in range(nb_choice*3):
@@ -62,9 +51,9 @@ for i in range(nb_choice*3):
 inner_f = inner_f + "(k<" + str(nb_choice*3) + ">.2)"
 
 if nb_choice == 1:
-  string4 = "l(x).if x==4 then k<x>." + inner_t + " else k<x>." + inner_f
+  string3 = "l(x).if x==4 then k<x>." + inner_t + " else k<x>." + inner_f
 else:
-  string4 = "l(x).(if x==4 then k<x>." + inner_t + " else k<x>." + inner_f + ")"
+  string3 = "l(x).(if x==4 then k<x>." + inner_t + " else k<x>." + inner_f + ")"
   for i in range(nb_choice-1):
     temp = "if x mod 2 == 0 then "
     temp2 = "(recX.k<1>.X)"
@@ -76,6 +65,6 @@ else:
     for x in range(i+1):
         temp = temp + " else k<x>." + inner_f
     temp = temp+" else k<x>." + inner_f
-    string4 = string4 + " + ("+temp+")"
+    string3 = string3 + " + ("+temp+")"
 
-print(string4)
+print(string3)
