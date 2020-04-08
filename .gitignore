@@ -77,4 +77,3 @@ venv/
 .ipynb_checkpoints/
 *.png
 *.ipynb
-*.csv
