@@ -15,7 +15,8 @@ What things you need to install the software and how to install them.
 sudo apt install curl
 ```
 
-#### Installs opam (the package manager for OCaml)
+#### Installs opam 
+OPAM is the package manager for OCaml.
 ```
 sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
 ```
