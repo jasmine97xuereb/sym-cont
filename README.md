@@ -15,7 +15,7 @@ What things you need to install the software and how to install them.
 sudo apt install curl
 ```
 
-#### Installs opam 
+#### Installs opam (the package manager for OCaml)
 ```
 sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
 ```
@@ -27,22 +27,22 @@ opam init
 ```
 eval $(opam env)
 ```
-#### Installs the ocaml compiler version 4.08.0
+#### Installs the OCaml compiler version 4.08.0
 ```
 opam switch create 4.08.0
 eval $(opam env)
 ```
-#### Installs depext
+#### Installs opam-depext (tool to query and install external dependencies of opam packages)
 ```
 opam install depext
 eval $(opam env)
 ```
-#### Install Z3 dependencies gmp and m4 outside of opam
+#### Install Z3 dependencies gmp and m4 outside of OPAM
 ```
 opam depext conf-gmp.1
 opam depext conf-m4.1
 ```
-#### Installs the Z3 SAT solver
+#### Installs Z3 (SMT Solver)
 ```
 opam install z3
 ```
@@ -51,17 +51,17 @@ opam install z3
 export LD_LIBRARY_PATH=~/.opam/4.08.0/lib/z3
 eval $(opam env)
 ```
-#### Installs Zarith
+#### Installs Zarith (library to implement arithmetic and logical operations over arbitrary-precision integers)
 ```
 opam install zarith
 eval $(opam env)
 ```
-#### Installs Menhir
+#### Installs Menhir (parser generator for OCaml)
 ```
 opam install menhir
 eval $(opam env)
 ```
-#### Install oasis
+#### Install Oasis (tool to integrate a configure, build and install system in for OCaml projects)
 ```
 opam install oasis
 eval $(opam env)
