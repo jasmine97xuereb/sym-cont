@@ -16,7 +16,7 @@ sudo apt install curl
 ```
 
 #### Installs opam 
-OPAM is the package manager for OCaml.
+opam is the package manager for OCaml.
 ```
 sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
 ```
@@ -33,17 +33,19 @@ eval $(opam env)
 opam switch create 4.08.0
 eval $(opam env)
 ```
-#### Installs opam-depext (tool to query and install external dependencies of opam packages)
+#### Installs opam-depext 
+opam-depext is a tool to query and install external dependencies of opam packages.
 ```
 opam install depext
 eval $(opam env)
 ```
-#### Install Z3 dependencies gmp and m4 outside of OPAM
+#### Install Z3 dependencies gmp and m4 outside of opam
 ```
 opam depext conf-gmp.1
 opam depext conf-m4.1
 ```
-#### Installs Z3 (SMT Solver)
+#### Installs Z3 
+Z3 is an SMT Solver by Microsoft.
 ```
 opam install z3
 ```
@@ -52,17 +54,20 @@ opam install z3
 export LD_LIBRARY_PATH=~/.opam/4.08.0/lib/z3
 eval $(opam env)
 ```
-#### Installs Zarith (library to implement arithmetic and logical operations over arbitrary-precision integers)
+#### Installs Zarith 
+Zarith is a library used to implement arithmetic and logical operations over arbitrary-precision integers.
 ```
 opam install zarith
 eval $(opam env)
 ```
-#### Installs Menhir (parser generator for OCaml)
+#### Installs Menhir 
+Menhir is a parser generator for OCaml.
 ```
 opam install menhir
 eval $(opam env)
 ```
-#### Install Oasis (tool to integrate a configure, build and install system in for OCaml projects)
+#### Install Oasis 
+Oasis is a tool used to integrate a configure, build and install system in for OCaml projects.
 ```
 opam install oasis
 eval $(opam env)
