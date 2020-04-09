@@ -16,7 +16,7 @@ sudo apt install curl
 ```
 
 #### Installs opam 
-opam is the package manager for OCaml.
+Opam is the package manager for OCaml.
 ```
 sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
 ```
@@ -34,7 +34,7 @@ opam switch create 4.08.0
 eval $(opam env)
 ```
 #### Installs opam-depext 
-opam-depext is a tool to query and install external dependencies of opam packages.
+Opam-depext is a tool to query and install external dependencies of opam packages.
 ```
 opam install depext
 eval $(opam env)
