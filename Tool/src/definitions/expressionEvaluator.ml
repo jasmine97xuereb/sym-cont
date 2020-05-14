@@ -102,7 +102,7 @@ let rec substitute_expression (exp: Ast.Expression.t) (y: Ast.Expression.t) (to_
     | Ast.Expression.BinaryExp(x) -> 
       add_binary_condition (substitute_expression x.arg_lt y to_sub) (substitute_expression x.arg_rt y to_sub) x.operator
     | Ast.Expression.UnaryExp(x) -> add_unary_condition (substitute_expression x.arg y to_sub)
-    | _ -> exp
+    | Ast.Expression.ExpressionTree(x) -> add_expression_tree (substitute_expression x.cond y to_sub) (List.map (fun x -> substitute_expression x y to_sub) x.if_true) (List.map (fun x -> substitute_expression x y to_sub) x.if_false)
 
 (*substitute all free occurences of tvar by new_tvar*)
 let rec substitute_tvar (mon: Ast.Monitor.t) (monvar: Ast.TVar.t) (new_tvar: Ast.TVar.t): Ast.Monitor.t = 
