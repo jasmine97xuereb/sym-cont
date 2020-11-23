@@ -54,13 +54,16 @@ and fv_expression (expr: Ast.Expression.t) (var_set: Vars.t): Vars.t =
 and fv_tvar (tvar: Ast.TVar.t) (var_set: Vars.t) (tvars_checked: Ast.TVar.t list): Vars.t = 
   match TVars.find_opt tvar.tvar !mapTVar with
   | Some m -> 
+    print_endline(pretty_print_monitor_list_string [m]);
     (match TVars.find_opt tvar.tvar !mapTVarFv with 
-    | Some n -> n
-    | None -> var_set 
+    | Some n -> 
+      Vars.union n var_set
+    | None -> 
+      let free_vars = fv_mon [m] Vars.empty tvars_checked 
+      in mapTVarFv := TVars.add tvar.tvar free_vars !mapTVarFv;
+      Vars.union free_vars var_set
     )
   | None -> var_set
-    (* | Some m -> fv_mon [m] var_set tvars_checked
-    | None -> var_set *)
 
 and fv_eg (mon: Ast.Monitor.ExpressionGuard.t) (var_set: Vars.t) (tvars_checked: Ast.TVar.t list): Vars.t =
   match mon.payload with
@@ -132,17 +135,11 @@ let rec rename_monvar (m: Ast.Monitor.t) (bound: BoundTVars.t): Ast.Monitor.t =
     if BoundTVars.mem x.monvar bound
     then
       (*if it already bound, create a fresh tvar *)
-      (*add the map from the current tvar to its set of free variables*)
       (let new_tvar = fresh_tvar !tvar_counter in
-      let free_vars = fv ([], [x.consume]) Vars.empty
-      in mapTVarFv := TVars.add (print_tvar_string new_tvar) free_vars !mapTVarFv;
       incr tvar_counter; 
       create_recurse_mon new_tvar (rename_monvar (substitute_tvar x.consume x.monvar new_tvar) (BoundTVars.add new_tvar bound))
       )
     else(
-      (*add the map from the current tvar to its set of free variables*)
-      let free_vars = fv ([], [x.consume]) Vars.empty
-      in mapTVarFv := TVars.add x.monvar.tvar free_vars !mapTVarFv;
       create_recurse_mon x.monvar (rename_monvar x.consume (BoundTVars.add x.monvar bound)))
   | _ -> m
 
